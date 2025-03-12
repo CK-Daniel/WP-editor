@@ -77,8 +77,19 @@ class WP_Frontend_Editor {
     private function load_dependencies() {
         // Core classes
         require_once WPFE_PLUGIN_DIR . 'includes/class-wp-frontend-editor-admin.php';
-        require_once WPFE_PLUGIN_DIR . 'includes/class-wp-frontend-editor-ajax.php';
         require_once WPFE_PLUGIN_DIR . 'includes/class-wp-frontend-editor-acf.php';
+        
+        // AJAX handler classes
+        require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-ajax-base.php';
+        require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-acf-utils.php';
+        require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-field-renderer.php';
+        require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-fields-handler.php';
+        require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-form-handler.php';
+        require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-media-handler.php';
+        require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-rest-handler.php';
+        
+        // Main AJAX class (needs to be included after its dependencies)
+        require_once WPFE_PLUGIN_DIR . 'includes/class-wp-frontend-editor-ajax.php';
     }
 
     /**
