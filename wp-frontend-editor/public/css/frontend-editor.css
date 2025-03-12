@@ -1,0 +1,275 @@
+/**
+ * Frontend Editor Styles
+ */
+
+/* Editable Elements */
+.wpfe-editable {
+    position: relative;
+}
+
+/* Edit Buttons */
+.wpfe-edit-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: rgba(0, 124, 186, 0.9);
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    padding: 4px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.wpfe-editable:hover .wpfe-edit-button {
+    opacity: 1;
+}
+
+.wpfe-edit-button .dashicons {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+}
+
+/* Editor Sidebar */
+.wpfe-editor-sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 350px;
+    height: 100%;
+    background-color: #fff;
+    box-shadow: -3px 0 10px rgba(0, 0, 0, 0.2);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+}
+
+.wpfe-editor-sidebar.is-active {
+    transform: translateX(0);
+}
+
+/* Admin Bar Support */
+body.admin-bar .wpfe-editor-sidebar {
+    top: 32px;
+    height: calc(100% - 32px);
+}
+
+@media screen and (max-width: 782px) {
+    body.admin-bar .wpfe-editor-sidebar {
+        top: 46px;
+        height: calc(100% - 46px);
+    }
+}
+
+/* Sidebar Header */
+.wpfe-editor-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border-bottom: 1px solid #ddd;
+    background-color: #f8f8f8;
+}
+
+.wpfe-editor-sidebar-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.wpfe-editor-sidebar-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+}
+
+.wpfe-editor-sidebar-close:hover {
+    color: #dc3232;
+}
+
+/* Sidebar Content */
+.wpfe-editor-sidebar-content {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+/* Sidebar Fields */
+.wpfe-editor-field {
+    margin-bottom: 20px;
+}
+
+.wpfe-editor-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.wpfe-editor-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.wpfe-editor-input:focus {
+    border-color: #007cba;
+    box-shadow: 0 0 0 1px #007cba;
+    outline: 2px solid transparent;
+}
+
+textarea.wpfe-editor-input {
+    min-height: 100px;
+}
+
+/* Sidebar Footer */
+.wpfe-editor-sidebar-footer {
+    padding: 15px;
+    border-top: 1px solid #ddd;
+    background-color: #f8f8f8;
+}
+
+.wpfe-editor-sidebar-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Loading Spinner */
+.wpfe-editor-loading-spinner {
+    animation: wpfe-spin 1.5s linear infinite;
+}
+
+@keyframes wpfe-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Message Display */
+.wpfe-editor-message {
+    padding: 10px 0;
+    font-size: 14px;
+}
+
+.wpfe-editor-message.success {
+    color: #46b450;
+}
+
+.wpfe-editor-message.error {
+    color: #dc3232;
+}
+
+/* Overlay */
+.wpfe-editor-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 99998;
+}
+
+/* Image Field */
+.wpfe-editor-image-preview {
+    margin-bottom: 10px;
+    max-width: 100%;
+    border: 1px solid #ddd;
+    padding: 5px;
+    background-color: #f9f9f9;
+    display: flex;
+    justify-content: center;
+}
+
+.wpfe-editor-image-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+/* WYSIWYG Editor */
+.wpfe-editor-wysiwyg-container {
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+/* ACF Repeater Fields */
+.wpfe-repeater-row {
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.wpfe-repeater-row-handle {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.wpfe-repeater-row-content {
+    padding: 15px;
+}
+
+.wpfe-repeater-sub-field {
+    margin-bottom: 15px;
+}
+
+.wpfe-remove-row {
+    margin-top: 10px;
+}
+
+/* ACF Flexible Content */
+.wpfe-flexible-content-layout {
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.wpfe-flexible-content-layout-handle {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.wpfe-flexible-content-layout-content {
+    padding: 15px;
+}
+
+.wpfe-flexible-content-add {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 15px;
+}
+
+.wpfe-flexible-content-select {
+    flex: 1;
+}
+
+/* Inline Editing */
+.wpfe-inline-edit {
+    border: 2px dashed #007cba;
+    padding: 5px;
+    margin: -5px;
+}
+
+.wpfe-inline-edit:focus {
+    outline: none;
+}
