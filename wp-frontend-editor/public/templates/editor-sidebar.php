@@ -12,28 +12,124 @@ if ( ! defined( 'ABSPATH' ) ) {
 ?>
 <div id="wpfe-editor-sidebar" class="wpfe-editor-sidebar" style="display: none;">
     <div class="wpfe-editor-sidebar-header">
-        <h2 class="wpfe-editor-sidebar-title"><?php esc_html_e( 'Edit', 'wp-frontend-editor' ); ?> <span class="wpfe-editor-field-name"></span></h2>
-        <button type="button" class="wpfe-editor-sidebar-close">
-            <span class="dashicons dashicons-no-alt"></span>
-            <span class="screen-reader-text"><?php esc_html_e( 'Close', 'wp-frontend-editor' ); ?></span>
+        <div class="wpfe-editor-sidebar-header-content">
+            <h2 class="wpfe-editor-sidebar-title">
+                <span class="wpfe-editor-field-name"></span>
+                <div class="wpfe-editor-field-badges">
+                    <span class="wpfe-editor-field-type"></span>
+                    <span class="wpfe-editor-field-source"></span>
+                </div>
+            </h2>
+        </div>
+        <div class="wpfe-editor-sidebar-controls">
+            <button type="button" class="wpfe-editor-sidebar-minimize">
+                <span class="dashicons dashicons-minus"></span>
+                <span class="screen-reader-text"><?php esc_html_e( 'Minimize', 'wp-frontend-editor' ); ?></span>
+            </button>
+            <button type="button" class="wpfe-editor-sidebar-close">
+                <span class="dashicons dashicons-no-alt"></span>
+                <span class="screen-reader-text"><?php esc_html_e( 'Close', 'wp-frontend-editor' ); ?></span>
+            </button>
+        </div>
+    </div>
+    
+    <div class="wpfe-editor-sidebar-tabs">
+        <button type="button" class="wpfe-editor-tab active" data-tab="edit">
+            <span class="dashicons dashicons-edit"></span>
+            <?php esc_html_e( 'Edit', 'wp-frontend-editor' ); ?>
+        </button>
+        <button type="button" class="wpfe-editor-tab" data-tab="settings">
+            <span class="dashicons dashicons-admin-generic"></span>
+            <?php esc_html_e( 'Settings', 'wp-frontend-editor' ); ?>
+        </button>
+        <button type="button" class="wpfe-editor-tab" data-tab="history">
+            <span class="dashicons dashicons-backup"></span>
+            <?php esc_html_e( 'History', 'wp-frontend-editor' ); ?>
         </button>
     </div>
+    
     <div class="wpfe-editor-sidebar-content">
         <div class="wpfe-editor-sidebar-loading">
-            <span class="dashicons dashicons-update-alt wpfe-editor-loading-spinner"></span>
-            <p><?php esc_html_e( 'Loading...', 'wp-frontend-editor' ); ?></p>
+            <div class="wpfe-editor-loading-spinner">
+                <div class="wpfe-spinner-dot"></div>
+                <div class="wpfe-spinner-dot"></div>
+                <div class="wpfe-spinner-dot"></div>
+            </div>
+            <p><?php esc_html_e( 'Loading editor...', 'wp-frontend-editor' ); ?></p>
         </div>
-        <div class="wpfe-editor-sidebar-fields"></div>
+        
+        <!-- Edit tab content -->
+        <div class="wpfe-editor-tab-content active" data-tab-content="edit">
+            <div class="wpfe-editor-sidebar-fields">
+                <!-- Field content will be inserted here -->
+            </div>
+        </div>
+        
+        <!-- Settings tab content -->
+        <div class="wpfe-editor-tab-content" data-tab-content="settings">
+            <div class="wpfe-editor-settings">
+                <div class="wpfe-editor-setting">
+                    <label>
+                        <input type="checkbox" name="wpfe-live-preview" checked>
+                        <?php esc_html_e( 'Live preview changes', 'wp-frontend-editor' ); ?>
+                    </label>
+                </div>
+                <div class="wpfe-editor-setting">
+                    <label>
+                        <input type="checkbox" name="wpfe-expand-interface">
+                        <?php esc_html_e( 'Full-width editor', 'wp-frontend-editor' ); ?>
+                    </label>
+                </div>
+                <div class="wpfe-editor-setting wpfe-editor-setting-select">
+                    <label for="wpfe-sidebar-position"><?php esc_html_e( 'Editor position', 'wp-frontend-editor' ); ?></label>
+                    <select id="wpfe-sidebar-position" name="wpfe-sidebar-position">
+                        <option value="right"><?php esc_html_e( 'Right', 'wp-frontend-editor' ); ?></option>
+                        <option value="left"><?php esc_html_e( 'Left', 'wp-frontend-editor' ); ?></option>
+                        <option value="bottom"><?php esc_html_e( 'Bottom', 'wp-frontend-editor' ); ?></option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- History tab content -->
+        <div class="wpfe-editor-tab-content" data-tab-content="history">
+            <div class="wpfe-editor-history">
+                <p class="wpfe-editor-history-notice"><?php esc_html_e( 'Recent changes for this field will appear here', 'wp-frontend-editor' ); ?></p>
+                <ul class="wpfe-editor-history-list">
+                    <!-- History items will be added here -->
+                </ul>
+            </div>
+        </div>
     </div>
+    
     <div class="wpfe-editor-sidebar-footer">
         <div class="wpfe-editor-message"></div>
         <div class="wpfe-editor-sidebar-actions">
-            <button type="button" class="button wpfe-editor-sidebar-cancel"><?php esc_html_e( 'Cancel', 'wp-frontend-editor' ); ?></button>
-            <button type="button" class="button button-primary wpfe-editor-sidebar-save"><?php esc_html_e( 'Save Changes', 'wp-frontend-editor' ); ?></button>
+            <div class="wpfe-editor-secondary-actions">
+                <a href="#" class="wpfe-editor-edit-backend">
+                    <span class="dashicons dashicons-admin-site"></span>
+                    <?php esc_html_e( 'Edit in Admin', 'wp-frontend-editor' ); ?>
+                </a>
+                <a href="#" class="wpfe-editor-keyboard-shortcuts">
+                    <span class="dashicons dashicons-keyboard"></span>
+                    <?php esc_html_e( 'Shortcuts', 'wp-frontend-editor' ); ?>
+                </a>
+            </div>
+            <div class="wpfe-editor-main-actions">
+                <button type="button" class="wpfe-editor-sidebar-cancel"><?php esc_html_e( 'Cancel', 'wp-frontend-editor' ); ?></button>
+                <button type="button" class="wpfe-editor-sidebar-save"><?php esc_html_e( 'Save Changes', 'wp-frontend-editor' ); ?></button>
+            </div>
         </div>
     </div>
 </div>
+
 <div id="wpfe-editor-overlay" class="wpfe-editor-overlay" style="display: none;"></div>
+<div id="wpfe-editor-minimized" class="wpfe-editor-minimized" style="display: none;">
+    <button type="button" class="wpfe-editor-restore">
+        <span class="dashicons dashicons-editor-expand"></span>
+        <span class="wpfe-editor-minimized-title"></span>
+    </button>
+</div>
 
 <script type="text/template" id="wpfe-editor-field-template">
     <div class="wpfe-editor-field" data-field-name="{field_name}" data-field-type="{field_type}">

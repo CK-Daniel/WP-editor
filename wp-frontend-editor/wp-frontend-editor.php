@@ -11,7 +11,7 @@
  * Plugin Name: WP Frontend Editor
  * Plugin URI:  https://example.com/wp-frontend-editor
  * Description: A fully native WordPress plugin that allows front-end editing of static content, native WordPress fields, and Advanced Custom Fields (ACF), including repeater and nested fields.
- * Version:     1.0.1
+ * Version:     1.0.3
  * Author:      Your Name
  * Author URI:  https://example.com
  * Text Domain: wp-frontend-editor

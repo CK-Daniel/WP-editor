@@ -550,11 +550,32 @@ class WP_Frontend_Editor_ACF {
         $name_without_prefix = preg_replace('/^(acf|field)_/', '', $name);
         $name_without_prefix_dashed = str_replace('_', '-', $name_without_prefix);
         
-        // Core selectors based on field name
-        $selectors = array();
+        // Create array to store selectors by priority/reliability
+        $primary_selectors = array(); // Most reliable selectors
+        $secondary_selectors = array(); // Common pattern selectors
+        $tertiary_selectors = array(); // Fallback/generic selectors
         
-        // Class-based selectors (common in themes)
-        $selectors = array_merge($selectors, array(
+        // PRIMARY SELECTORS (data attributes - highly reliable)
+        $primary_selectors = array(
+            // Data attribute selectors (most reliable)
+            '[data-field-key="' . $field['key'] . '"]',
+            '[data-key="' . $field['key'] . '"]',
+            '[data-acf-field-key="' . $field['key'] . '"]',
+            '[data-field-name="' . $name . '"]',
+            '[data-name="' . $name . '"]',
+            '[data-acf-field="' . $name . '"]',
+            '[data-field="' . $name . '"]',
+            '[data-acf="' . $name . '"]',
+            
+            // Direct ID matches (very reliable)
+            '#' . $field['key'],
+            '#field_' . $name,
+            '#acf-field-' . $name,
+            '#acf-' . $name
+        );
+        
+        // SECONDARY SELECTORS (class-based - common in themes)
+        $secondary_selectors = array(
             '.acf-field-' . $name,
             '.acf-field-' . $name_dashed,
             '.field-' . $name,
@@ -564,30 +585,12 @@ class WP_Frontend_Editor_ACF {
             '.' . $name . '-field',
             '.' . $name . '-wrapper',
             '.' . $name_dashed . '-field',
-            '.' . $name_dashed . '-wrapper',
-            '.' . $name,
-            '.' . $name_dashed,
-            
-            // ID-based selectors
-            '#acf-' . $name,
-            '#acf-' . $name_dashed,
-            '#field-' . $name,
-            '#field-' . $name_dashed,
-            '#' . $name . '-field',
-            '#' . $name . '-wrapper',
-            '#' . $name,
-            
-            // Data attribute selectors (more reliable)
-            '[data-acf-field="' . $name . '"]',
-            '[data-field-name="' . $name . '"]',
-            '[data-name="' . $name . '"]',
-            '[data-field="' . $name . '"]',
-            '[data-acf="' . $name . '"]'
-        ));
+            '.' . $name_dashed . '-wrapper'
+        );
         
         // Add non-prefix variations if they're different from the name
         if ( $name !== $name_without_prefix && !empty($name_without_prefix) ) {
-            $selectors = array_merge($selectors, array(
+            $secondary_selectors = array_merge($secondary_selectors, array(
                 '.acf-field-' . $name_without_prefix,
                 '.acf-field-' . $name_without_prefix_dashed,
                 '.field-' . $name_without_prefix,
@@ -597,13 +600,18 @@ class WP_Frontend_Editor_ACF {
             ));
         }
         
-        // Add key-based selectors
-        if ( !empty($field['key']) ) {
-            $selectors = array_merge($selectors, array(
-                '[data-key="' . $field['key'] . '"]',
-                '[data-field-key="' . $field['key'] . '"]'
-            ));
-        }
+        // TERTIARY SELECTORS (field type-specific and generic)
+        $tertiary_selectors = array(
+            // Generic class matches
+            '.' . $name,
+            '.' . $name_dashed,
+            '#' . $name,
+            '#' . $name_dashed,
+            '#field-' . $name,
+            '#field-' . $name_dashed,
+            '#' . $name . '-field',
+            '#' . $name . '-wrapper'
+        );
         
         // Field type-specific selectors
         if (isset($field['type'])) {
@@ -612,7 +620,7 @@ class WP_Frontend_Editor_ACF {
                 case 'textarea':
                 case 'wysiwyg':
                     // Check for common text containers
-                    $selectors = array_merge($selectors, array(
+                    $tertiary_selectors = array_merge($tertiary_selectors, array(
                         '.acf-text-value[data-name="' . $name . '"]',
                         '.acf-content[data-name="' . $name . '"]',
                         'div[class*="' . $name . '"]',
@@ -621,72 +629,109 @@ class WP_Frontend_Editor_ACF {
                         'h1[class*="' . $name . '"]',
                         'h2[class*="' . $name . '"]',
                         'h3[class*="' . $name . '"]',
-                        'h4[class*="' . $name . '"]'
+                        'h4[class*="' . $name . '"]',
+                        // Add context-based attribute selectors
+                        '[data-content-field="' . $name . '"]',
+                        '[data-text-field="' . $name . '"]'
                     ));
                     break;
                     
                 case 'image':
-                case 'gallery':
-                    // Handle images and galleries
-                    $type_selectors = array(
+                    // Image-specific selectors
+                    $image_selectors = array(
                         'img[class*="' . $name . '"]',
                         '.acf-image-' . $name,
-                        '.acf-gallery-' . $name
+                        '.img-' . $name,
+                        '[data-image-field="' . $name . '"]',
+                        '.wp-block-image[class*="' . $name . '"]',
+                        '.image-wrapper[class*="' . $name . '"]',
+                        'figure[class*="' . $name . '"]'
                     );
                     
-                    // Add id-based selectors only if we have a valid image ID
+                    // Add ID-based selectors for specific image if we have a value
                     if ($value) {
                         $image_id = is_array($value) ? ($value['ID'] ?? $value) : $value;
                         if (is_numeric($image_id) && $image_id > 0) {
-                            $type_selectors[] = '.wp-image-' . $image_id;
+                            array_unshift($image_selectors, '.wp-image-' . $image_id); // Add as high priority
+                            
+                            // Add data attribute for image ID
+                            $primary_selectors[] = '[data-image-id="' . $image_id . '"]';
                             
                             // Try to match by file name in src attribute
                             $image_url = wp_get_attachment_url($image_id);
                             if ($image_url && basename($image_url)) {
-                                $type_selectors[] = 'img[src*="' . basename($image_url) . '"]';
+                                $image_selectors[] = 'img[src*="' . basename($image_url) . '"]';
                             }
                         }
                     }
                     
-                    // Image containers
-                    $type_selectors = array_merge($type_selectors, array(
-                        '.image-wrapper[class*="' . $name . '"]',
-                        'figure[class*="' . $name . '"]',
-                        '.wp-block-image[class*="' . $name . '"]'
-                    ));
+                    $tertiary_selectors = array_merge($tertiary_selectors, $image_selectors);
+                    break;
                     
-                    $selectors = array_merge($selectors, $type_selectors);
+                case 'gallery':
+                    $tertiary_selectors = array_merge($tertiary_selectors, array(
+                        '.acf-gallery-' . $name,
+                        '.gallery-' . $name,
+                        '.wp-block-gallery[class*="' . $name . '"]',
+                        '[data-gallery-field="' . $name . '"]',
+                        'div[class*="gallery"][class*="' . $name . '"]',
+                        '.wp-block-gallery[class*="' . $name . '"]'
+                    ));
                     break;
                     
                 case 'link':
-                    $selectors = array_merge($selectors, array(
+                    $tertiary_selectors = array_merge($tertiary_selectors, array(
                         'a[class*="' . $name . '"]',
                         '.link-' . $name,
-                        '.acf-link-' . $name
+                        '.acf-link-' . $name,
+                        // Add attributes that might contain link data
+                        '[data-link-field="' . $name . '"]',
+                        'a[href][data-field="' . $name . '"]'
                     ));
                     break;
                     
                 case 'select':
                 case 'checkbox':
                 case 'radio':
-                    $selectors = array_merge($selectors, array(
+                    $tertiary_selectors = array_merge($tertiary_selectors, array(
                         '.acf-value-' . $name,
                         '.acf-choice-' . $name,
-                        '.choice-' . $name
+                        '.choice-' . $name,
+                        // Add attributes for option/checkbox values
+                        '[data-option-field="' . $name . '"]',
+                        '[data-choice-field="' . $name . '"]',
+                        '.wp-block-acf-' . $name
                     ));
                     break;
                     
                 case 'repeater':
                 case 'flexible_content':
-                    $selectors = array_merge($selectors, array(
+                    $tertiary_selectors = array_merge($tertiary_selectors, array(
                         '.acf-repeater-' . $name,
                         '.acf-flexible-' . $name,
                         '.repeater-' . $name,
                         '.flexible-' . $name,
                         '.acf-blocks[data-name="' . $name . '"]',
-                        '.acf-rows[data-name="' . $name . '"]'
+                        '.acf-rows[data-name="' . $name . '"]',
+                        // Add specific data attributes
+                        '[data-repeater-field="' . $name . '"]',
+                        '[data-flexible-field="' . $name . '"]',
+                        // Gutenberg block support
+                        '.wp-block-acf-' . $name
                     ));
                     break;
+            }
+        }
+        
+        // Add content-based selectors for any field with a value
+        if (is_string($value) && !empty($value)) {
+            // For text fields with specific content
+            $content_excerpt = substr($value, 0, 50); // First 50 chars
+            if (strlen($content_excerpt) > 20) { // Only if enough content to be unique
+                $content_excerpt = esc_js($content_excerpt);
+                $primary_selectors[] = 'div:contains("' . $content_excerpt . '")';
+                $primary_selectors[] = 'p:contains("' . $content_excerpt . '")';
+                $primary_selectors[] = 'span:contains("' . $content_excerpt . '")';
             }
         }
         
@@ -694,25 +739,102 @@ class WP_Frontend_Editor_ACF {
         if (isset($field['label']) && !empty($field['label'])) {
             $label_selector = sanitize_title($field['label']);
             if (!empty($label_selector)) {
-                $selectors = array_merge($selectors, array(
+                $tertiary_selectors = array_merge($tertiary_selectors, array(
                     '.' . $label_selector,
                     '.acf-' . $label_selector,
-                    '.field-' . $label_selector
+                    '.field-' . $label_selector,
+                    '[data-label="' . esc_attr($field['label']) . '"]'
                 ));
             }
         }
         
+        // Merge all selectors with priority order
+        $all_selectors = array_merge($primary_selectors, $secondary_selectors, $tertiary_selectors);
+        
+        // Add context-based wrapper selectors - useful for finding fields in specific regions
+        $contextual_selectors = array(
+            // Look for containers that might wrap field values
+            '.entry-content .' . $name,
+            '.post-content .' . $name,
+            'article .' . $name,
+            '.content-area .' . $name,
+            '.main-content .' . $name,
+            
+            // Add theme-specific wrappers for the field
+            '#main .' . $name,
+            '#content .' . $name,
+            '.site-content .' . $name
+        );
+        
+        $all_selectors = array_merge($all_selectors, $contextual_selectors);
+        
         // Remove any empty selectors
-        $selectors = array_filter($selectors, function($selector) {
+        $all_selectors = array_filter($all_selectors, function($selector) {
             return !empty($selector) && strlen(trim($selector)) > 1;
         });
         
+        // Remove duplicates
+        $all_selectors = array_unique($all_selectors);
+        
         // Skip if no valid selectors
-        if (empty($selectors)) {
+        if (empty($all_selectors)) {
             return false;
         }
         
-        return implode(', ', $selectors);
+        // Store the field key as a special data attribute we'll add to any identified elements
+        // This will help with future identification
+        $this->enhance_identified_elements($field['key'], $name);
+        
+        return implode(', ', $all_selectors);
+    }
+    
+    /**
+     * Add enhancement script to mark identified elements with data attributes
+     * This helps with future identification by adding reliable markers
+     *
+     * @param string $field_key The field key
+     * @param string $field_name The field name
+     */
+    private function enhance_identified_elements($field_key, $field_name) {
+        static $enhancement_added = false;
+        
+        // Only add the enhancement script once per page
+        if (!$enhancement_added) {
+            add_action('wp_footer', function() {
+                ?>
+                <script type="text/javascript">
+                (function($) {
+                    // After elements are identified and buttons added
+                    $(document).on('wpfe:elements_initialized', function() {
+                        // Add data attributes to all identified elements for more reliable future selection
+                        $('.wpfe-editable').each(function() {
+                            var $element = $(this);
+                            var fieldKey = $element.data('wpfe-field');
+                            
+                            if (fieldKey) {
+                                // Add multiple identification attributes
+                                $element.attr('data-wpfe-identified', 'true');
+                                $element.attr('data-field-key', fieldKey);
+                                
+                                // Add a specific class for this field to make future identification easier
+                                $element.addClass('wpfe-field-' + fieldKey);
+                            }
+                        });
+                    });
+                    
+                    // Trigger after initialization
+                    $(document).ready(function() {
+                        setTimeout(function() {
+                            $(document).trigger('wpfe:elements_initialized');
+                        }, 1000);
+                    });
+                })(jQuery);
+                </script>
+                <?php
+            }, 999); // Late priority to ensure it runs after other scripts
+            
+            $enhancement_added = true;
+        }
     }
 
     /**

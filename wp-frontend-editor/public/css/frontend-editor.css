@@ -3,41 +3,112 @@
  */
 
 :root {
-    --wpfe-primary: #3858e9;
-    --wpfe-primary-dark: #2a3eb1;
+    /* Main colors */
+    --wpfe-primary: #2271b1;
+    --wpfe-primary-dark: #135e96;
+    --wpfe-primary-light: #72aee6;
+    --wpfe-secondary: #3858e9;
+    --wpfe-secondary-dark: #2a3eb1;
+    
+    /* UI colors */
     --wpfe-white: #ffffff;
     --wpfe-light-gray: #f6f7f7;
-    --wpfe-border: #dcdcde;
+    --wpfe-gray-100: #f0f0f1;
+    --wpfe-gray-200: #dcdcde;
+    --wpfe-gray-300: #c3c4c7;
+    --wpfe-gray-400: #a7aaad;
+    --wpfe-gray-500: #8c8f94;
+    --wpfe-gray-600: #646970;
+    --wpfe-gray-700: #3c434a;
+    --wpfe-gray-800: #2c3338;
+    --wpfe-gray-900: #1d2327;
+    
+    /* Functional colors */
+    --wpfe-border: var(--wpfe-gray-200);
     --wpfe-shadow: rgba(0, 0, 0, 0.2);
-    --wpfe-success: #46b450;
-    --wpfe-error: #dc3232;
-    --wpfe-warning: #ffb900;
+    --wpfe-shadow-light: rgba(0, 0, 0, 0.1);
+    --wpfe-success: #00a32a;
+    --wpfe-success-light: #edfaef;
+    --wpfe-error: #d63638;
+    --wpfe-error-light: #fcf0f1;
+    --wpfe-warning: #dba617;
+    --wpfe-warning-light: #fcf9e8;
     --wpfe-info: #00a0d2;
+    --wpfe-info-light: #f0f6fc;
+    
+    /* Dimensions */
+    --wpfe-sidebar-width: 400px;
+    --wpfe-sidebar-width-tablet: 340px;
+    --wpfe-sidebar-width-mobile: 100%;
+    --wpfe-sidebar-height-mobile: 80%;
+    --wpfe-border-radius: 4px;
+    --wpfe-input-height: 36px;
+    --wpfe-input-height-mobile: 42px; /* Larger touch targets */
+    --wpfe-button-size-mobile: 44px; /* Larger touch targets for buttons */
+    
+    /* Touch targets - minimum sizes for touch elements */
+    --wpfe-touch-target-size: 44px;
+    --wpfe-touch-target-spacing: 8px;
+    
+    /* Transitions */
+    --wpfe-transition-fast: 0.15s ease;
+    --wpfe-transition-normal: 0.25s ease;
+    
+    /* Typography */
+    --wpfe-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    --wpfe-font-size-mobile: 16px; /* Minimum 16px for mobile to avoid zoom on focus */
 }
 
 /* Editable Elements */
 .wpfe-editable {
     position: relative !important;
-    transition: outline 0.2s ease;
+    transition: all 0.3s ease !important;
     cursor: pointer;
+    min-height: 20px !important;
+    min-width: 20px !important;
+    /* Add a small outline always to make editable areas more noticeable */
+    outline: 1px dotted rgba(56, 88, 233, 0.2);
+    outline-offset: 2px;
 }
 
 /* Highlight effect when editable elements are hovered */
 .wpfe-editable:hover {
-    outline: 2px dashed var(--wpfe-primary);
-    outline-offset: 2px;
+    outline: 2px dashed var(--wpfe-primary) !important;
+    outline-offset: 2px !important;
+    z-index: 2 !important; /* Ensure the element is above others when hovered */
+    box-shadow: 0 0 0 1px rgba(56, 88, 233, 0.1) !important;
+}
+
+/* Strong highlight for the currently active editable element */
+.wpfe-editable-active {
+    outline: 3px solid var(--wpfe-primary) !important;
+    outline-offset: 3px !important;
+    z-index: 3 !important; /* Higher z-index than hover */
+    box-shadow: 0 0 10px rgba(56, 88, 233, 0.3) !important;
+    position: relative !important;
+}
+
+/* Pulse animation for active element */
+@keyframes wpfe-pulse {
+    0% { outline-color: var(--wpfe-primary); }
+    50% { outline-color: rgba(56, 88, 233, 0.5); }
+    100% { outline-color: var(--wpfe-primary); }
+}
+
+.wpfe-editable-active {
+    animation: wpfe-pulse 2s infinite;
 }
 
 /* Edit Buttons */
 .wpfe-edit-button {
     position: absolute !important;
-    z-index: 99999 !important;
+    z-index: 999999 !important; /* Ensure buttons are above everything */
     background-color: var(--wpfe-primary) !important;
     color: var(--wpfe-white) !important;
     border: none !important;
     border-radius: 3px !important;
-    padding: 6px !important;
-    box-shadow: 0 2px 5px var(--wpfe-shadow) !important;
+    padding: 8px !important;
+    box-shadow: 0 3px 8px var(--wpfe-shadow) !important;
     cursor: pointer !important;
     font-size: 14px !important;
     line-height: 1 !important;
@@ -45,42 +116,52 @@
     align-items: center !important;
     justify-content: center !important;
     opacity: 0;
+    pointer-events: auto !important; /* Ensure buttons are clickable */
     transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease !important;
-    min-width: 30px !important;
-    min-height: 30px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
     text-transform: none !important;
+    transform: scale(0.9) translateY(5px);
 }
 
-/* Button positioning */
+/* Button positioning - more visible positions */
 .wpfe-button-top-right {
-    top: -15px !important;
-    right: -5px !important;
+    top: 5px !important;
+    right: 5px !important;
 }
 
 .wpfe-button-top-left {
-    top: -15px !important;
-    left: -5px !important;
+    top: 5px !important;
+    left: 5px !important;
 }
 
 .wpfe-button-bottom-right {
-    bottom: -15px !important;
-    right: -5px !important;
+    bottom: 5px !important;
+    right: 5px !important;
 }
 
 .wpfe-button-bottom-left {
-    bottom: -15px !important;
-    left: -5px !important;
+    bottom: 5px !important;
+    left: 5px !important;
 }
 
 /* Make buttons fully visible on hover */
 .wpfe-editable:hover .wpfe-edit-button {
     opacity: 1 !important;
-    transform: translateY(0) !important;
+    transform: scale(1) translateY(0) !important;
+}
+
+/* Show button during element focus as well (for accessibility) */
+.wpfe-editable:focus .wpfe-edit-button,
+.wpfe-editable:focus-within .wpfe-edit-button {
+    opacity: 1 !important;
+    transform: scale(1) translateY(0) !important;
 }
 
 .wpfe-edit-button:hover {
     background-color: var(--wpfe-primary-dark) !important;
-    transform: translateY(-2px) !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 10px var(--wpfe-shadow) !important;
 }
 
 .wpfe-edit-button .dashicons {
@@ -110,20 +191,54 @@
     position: fixed !important;
     top: 0 !important;
     right: 0 !important;
-    width: 350px !important;
+    width: var(--wpfe-sidebar-width) !important;
     height: 100% !important;
     background-color: var(--wpfe-white) !important;
-    box-shadow: -5px 0 15px var(--wpfe-shadow) !important;
+    box-shadow: -2px 0 30px var(--wpfe-shadow) !important;
     z-index: 999999 !important;
     display: flex !important;
     flex-direction: column !important;
     transform: translateX(100%) !important;
-    transition: transform 0.3s ease !important;
+    transition: transform var(--wpfe-transition-normal) !important;
     overflow: hidden !important;
+    border-left: 1px solid var(--wpfe-border) !important;
+    font-family: var(--wpfe-font-family) !important;
 }
 
 .wpfe-editor-sidebar.is-active {
     transform: translateX(0) !important;
+}
+
+.wpfe-editor-sidebar.position-left {
+    right: auto !important;
+    left: 0 !important;
+    transform: translateX(-100%) !important;
+    border-right: 1px solid var(--wpfe-border) !important;
+    border-left: none !important;
+    box-shadow: 2px 0 30px var(--wpfe-shadow) !important;
+}
+
+.wpfe-editor-sidebar.position-left.is-active {
+    transform: translateX(0) !important;
+}
+
+.wpfe-editor-sidebar.position-bottom {
+    width: 100% !important;
+    height: 70% !important;
+    bottom: 0 !important;
+    top: auto !important;
+    transform: translateY(100%) !important;
+    border-top: 1px solid var(--wpfe-border) !important;
+    border-left: none !important;
+    box-shadow: 0 -2px 30px var(--wpfe-shadow) !important;
+}
+
+.wpfe-editor-sidebar.position-bottom.is-active {
+    transform: translateY(0) !important;
+}
+
+.wpfe-editor-sidebar.expanded {
+    width: 80% !important;
 }
 
 /* Admin Bar Support */
@@ -140,20 +255,43 @@ body.admin-bar .wpfe-editor-sidebar {
     
     .wpfe-editor-sidebar {
         width: 100% !important;
-        max-width: 100% !important;
+    }
+    
+    .wpfe-editor-sidebar.position-bottom {
+        height: 80% !important; /* More space on mobile for bottom positioned sidebar */
     }
     
     .wpfe-edit-button {
         /* Make edit buttons more touch-friendly */
-        opacity: 0.7 !important;
-        min-width: 36px !important;
-        min-height: 36px !important;
+        opacity: 0.9 !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
+        padding: 10px !important;
+        background-color: var(--wpfe-primary) !important;
     }
     
     /* Always show edit buttons on mobile to make them easier to tap */
     .wpfe-editable .wpfe-edit-button {
-        opacity: 0.7 !important;
+        opacity: 0.9 !important;
         transform: scale(1) translateY(0) !important;
+        border: 2px solid var(--wpfe-white) !important;
+        box-shadow: 0 2px 10px var(--wpfe-shadow) !important;
+    }
+    
+    /* Make editable areas more noticeable on mobile */
+    .wpfe-editable {
+        outline: 2px dashed var(--wpfe-primary-light) !important;
+    }
+    
+    /* Position buttons more accessibly on mobile */
+    .wpfe-button-top-right,
+    .wpfe-button-top-left,
+    .wpfe-button-bottom-right,
+    .wpfe-button-bottom-left {
+        top: 10px !important;
+        right: 10px !important;
+        bottom: auto !important;
+        left: auto !important;
     }
 }
 
@@ -164,16 +302,21 @@ body.admin-bar .wpfe-editor-sidebar {
         gap: 8px !important;
     }
     
+    .wpfe-editor-main-actions {
+        flex-direction: column !important;
+        width: 100% !important;
+    }
+    
     .wpfe-editor-sidebar-actions button {
         width: 100% !important;
     }
     
     /* Ensure buttons are very visible and tappable */
     .wpfe-edit-button {
-        opacity: 0.8 !important;
-        min-width: 40px !important;
-        min-height: 40px !important;
-        padding: 8px !important;
+        opacity: 0.9 !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
+        padding: 10px !important;
     }
 }
 
@@ -182,57 +325,249 @@ body.admin-bar .wpfe-editor-sidebar {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 15px !important;
+    padding: 12px 16px !important;
     border-bottom: 1px solid var(--wpfe-border) !important;
-    background-color: var(--wpfe-light-gray) !important;
+    background-color: var(--wpfe-white) !important;
+}
+
+.wpfe-editor-sidebar-header-content {
+    flex: 1 !important;
 }
 
 .wpfe-editor-sidebar-title {
     margin: 0 !important;
     font-size: 16px !important;
     font-weight: 600 !important;
-    color: #23282d !important;
+    color: var(--wpfe-gray-900) !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
-.wpfe-editor-sidebar-close {
+.wpfe-editor-field-name {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    color: var(--wpfe-gray-900) !important;
+    margin-bottom: 5px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 280px !important;
+}
+
+.wpfe-editor-field-badges {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    margin-top: 4px !important;
+}
+
+.wpfe-editor-field-type,
+.wpfe-editor-field-source {
+    display: inline-flex !important;
+    align-items: center !important;
+    background-color: var(--wpfe-gray-100) !important;
+    color: var(--wpfe-gray-700) !important;
+    font-size: 11px !important;
+    padding: 2px 8px !important;
+    border-radius: 12px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    font-weight: 500 !important;
+    border: 1px solid var(--wpfe-gray-200) !important;
+}
+
+.wpfe-editor-field-type {
+    background-color: var(--wpfe-primary-light) !important;
+    color: var(--wpfe-white) !important;
+    border-color: var(--wpfe-primary-light) !important;
+}
+
+.wpfe-editor-sidebar-controls {
+    display: flex !important;
+    gap: 8px !important;
+}
+
+.wpfe-editor-sidebar-close,
+.wpfe-editor-sidebar-minimize {
     background: none !important;
     border: none !important;
     cursor: pointer !important;
-    color: #666 !important;
-    padding: 0 !important;
+    color: var(--wpfe-gray-500) !important;
+    padding: 6px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 30px !important;
+    height: 30px !important;
+    transition: background-color var(--wpfe-transition-fast), color var(--wpfe-transition-fast) !important;
+}
+
+.wpfe-editor-sidebar-close:hover,
+.wpfe-editor-sidebar-minimize:hover {
+    background-color: var(--wpfe-gray-100) !important;
+    color: var(--wpfe-gray-900) !important;
 }
 
 .wpfe-editor-sidebar-close:hover {
     color: var(--wpfe-error) !important;
 }
 
+/* Sidebar Tabs */
+.wpfe-editor-sidebar-tabs {
+    display: flex !important;
+    border-bottom: 1px solid var(--wpfe-border) !important;
+    background-color: var(--wpfe-white) !important;
+}
+
+.wpfe-editor-tab {
+    flex: 1 !important;
+    background: none !important;
+    border: none !important;
+    border-bottom: 3px solid transparent !important;
+    cursor: pointer !important;
+    padding: 12px 8px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--wpfe-gray-700) !important;
+    transition: all var(--wpfe-transition-fast) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+}
+
+.wpfe-editor-tab:hover {
+    background-color: var(--wpfe-gray-100) !important;
+    color: var(--wpfe-gray-900) !important;
+}
+
+.wpfe-editor-tab.active {
+    border-bottom-color: var(--wpfe-primary) !important;
+    color: var(--wpfe-primary) !important;
+    font-weight: 600 !important;
+}
+
+.wpfe-editor-tab .dashicons {
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+}
+
+/* Tab Content */
+.wpfe-editor-tab-content {
+    display: none !important;
+    padding: 0 !important;
+    height: 100% !important;
+}
+
+.wpfe-editor-tab-content.active {
+    display: block !important;
+}
+
 /* Sidebar Content */
 .wpfe-editor-sidebar-content {
     flex: 1 !important;
-    padding: 15px !important;
     overflow-y: auto !important;
+    position: relative !important;
+    background-color: var(--wpfe-gray-100) !important;
+}
+
+/* Settings Tab */
+.wpfe-editor-settings {
+    padding: 20px 16px !important;
+}
+
+.wpfe-editor-setting {
+    margin-bottom: 16px !important;
+    padding: 12px !important;
+    background-color: var(--wpfe-white) !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+}
+
+.wpfe-editor-setting-select {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+.wpfe-editor-setting label {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 14px !important;
+    color: var(--wpfe-gray-700) !important;
+}
+
+.wpfe-editor-setting select {
+    width: 100% !important;
+    height: var(--wpfe-input-height) !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    padding: 0 12px !important;
+}
+
+/* History Tab */
+.wpfe-editor-history {
+    padding: 20px 16px !important;
+}
+
+.wpfe-editor-history-notice {
+    padding: 12px !important;
+    background-color: var(--wpfe-info-light) !important;
+    border: 1px solid var(--wpfe-info) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    color: var(--wpfe-gray-700) !important;
+    margin-bottom: 16px !important;
+    font-size: 13px !important;
+}
+
+.wpfe-editor-history-list {
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.wpfe-editor-history-item {
+    padding: 12px !important;
+    background-color: var(--wpfe-white) !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    margin-bottom: 8px !important;
 }
 
 /* Sidebar Fields */
+.wpfe-editor-sidebar-fields {
+    padding: 20px 16px !important;
+}
+
 .wpfe-editor-field {
     margin-bottom: 20px !important;
+    padding: 16px !important;
+    background-color: var(--wpfe-white) !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    box-shadow: 0 1px 3px var(--wpfe-shadow-light) !important;
 }
 
 .wpfe-editor-field label {
     display: block !important;
-    margin-bottom: 8px !important;
+    margin-bottom: 10px !important;
     font-weight: 600 !important;
-    color: #23282d !important;
+    color: var(--wpfe-gray-800) !important;
     font-size: 14px !important;
 }
 
 .wpfe-editor-input {
     width: 100% !important;
-    padding: 8px !important;
+    padding: 8px 12px !important;
     border: 1px solid var(--wpfe-border) !important;
-    border-radius: 3px !important;
+    border-radius: var(--wpfe-border-radius) !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
+    height: var(--wpfe-input-height) !important;
+    transition: border-color var(--wpfe-transition-fast), box-shadow var(--wpfe-transition-fast) !important;
 }
 
 .wpfe-editor-input:focus {
@@ -242,53 +577,208 @@ body.admin-bar .wpfe-editor-sidebar {
 }
 
 textarea.wpfe-editor-input {
-    min-height: 100px !important;
+    min-height: 120px !important;
+    height: auto !important;
 }
 
 /* Sidebar Footer */
 .wpfe-editor-sidebar-footer {
-    padding: 15px !important;
+    padding: 16px !important;
     border-top: 1px solid var(--wpfe-border) !important;
-    background-color: var(--wpfe-light-gray) !important;
+    background-color: var(--wpfe-white) !important;
 }
 
-.wpfe-editor-sidebar-actions {
-    display: flex !important;
-    justify-content: flex-end !important;
-    gap: 10px !important;
-}
-
-.wpfe-editor-sidebar-actions button {
-    min-width: 80px !important;
-    text-align: center !important;
-}
-
-/* Loading Spinner */
-.wpfe-editor-loading-spinner {
-    animation: wpfe-spin 1.5s linear infinite !important;
-}
-
-@keyframes wpfe-spin {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-/* Message Display */
 .wpfe-editor-message {
     padding: 10px 0 !important;
     font-size: 14px !important;
+    margin-bottom: 12px !important;
+    text-align: center !important;
 }
 
 .wpfe-editor-message.success {
     color: var(--wpfe-success) !important;
+    background-color: var(--wpfe-success-light) !important;
+    padding: 10px !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    border: 1px solid var(--wpfe-success) !important;
 }
 
 .wpfe-editor-message.error {
     color: var(--wpfe-error) !important;
+    background-color: var(--wpfe-error-light) !important;
+    padding: 10px !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    border: 1px solid var(--wpfe-error) !important;
+}
+
+.wpfe-editor-sidebar-actions {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.wpfe-editor-secondary-actions {
+    display: flex !important;
+    gap: 16px !important;
+}
+
+.wpfe-editor-edit-backend,
+.wpfe-editor-keyboard-shortcuts {
+    color: var(--wpfe-gray-600) !important;
+    text-decoration: none !important;
+    display: flex !important;
+    align-items: center !important;
+    font-size: 13px !important;
+}
+
+.wpfe-editor-edit-backend:hover,
+.wpfe-editor-keyboard-shortcuts:hover {
+    color: var(--wpfe-primary) !important;
+}
+
+.wpfe-editor-edit-backend .dashicons,
+.wpfe-editor-keyboard-shortcuts .dashicons {
+    margin-right: 4px !important;
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+}
+
+.wpfe-editor-main-actions {
+    display: flex !important;
+    gap: 10px !important;
+}
+
+.wpfe-editor-sidebar-actions button {
+    min-width: 100px !important;
+    height: 36px !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all var(--wpfe-transition-fast) !important;
+    text-align: center !important;
+    padding: 0 16px !important;
+}
+
+.wpfe-editor-sidebar-cancel {
+    background-color: var(--wpfe-white) !important;
+    border: 1px solid var(--wpfe-border) !important;
+    color: var(--wpfe-gray-700) !important;
+}
+
+.wpfe-editor-sidebar-cancel:hover {
+    background-color: var(--wpfe-gray-100) !important;
+    border-color: var(--wpfe-gray-300) !important;
+}
+
+.wpfe-editor-sidebar-save {
+    background-color: var(--wpfe-primary) !important;
+    border: 1px solid var(--wpfe-primary-dark) !important;
+    color: var(--wpfe-white) !important;
+}
+
+.wpfe-editor-sidebar-save:hover {
+    background-color: var(--wpfe-primary-dark) !important;
+}
+
+.wpfe-editor-edit-backend {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    text-decoration: none !important;
+    color: var(--wpfe-gray-700) !important;
+    font-size: 13px !important;
+    transition: color var(--wpfe-transition-fast) !important;
+}
+
+.wpfe-editor-edit-backend:hover {
+    color: var(--wpfe-primary) !important;
+}
+
+/* Loading Spinner */
+.wpfe-editor-sidebar-loading {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 200px !important;
+    padding: 20px !important;
+}
+
+.wpfe-editor-loading-spinner {
+    display: flex !important;
+    justify-content: center !important;
+    margin-bottom: 12px !important;
+}
+
+.wpfe-spinner-dot {
+    width: 10px !important;
+    height: 10px !important;
+    margin: 0 4px !important;
+    border-radius: 50% !important;
+    background-color: var(--wpfe-primary) !important;
+    opacity: 0.6 !important;
+    animation: wpfe-pulse-loader 1.2s infinite ease-in-out !important;
+}
+
+.wpfe-spinner-dot:nth-child(1) {
+    animation-delay: 0s !important;
+}
+
+.wpfe-spinner-dot:nth-child(2) {
+    animation-delay: 0.2s !important;
+}
+
+.wpfe-spinner-dot:nth-child(3) {
+    animation-delay: 0.4s !important;
+}
+
+@keyframes wpfe-pulse-loader {
+    0%, 80%, 100% { 
+        transform: scale(0.6);
+        opacity: 0.6;
+    }
+    40% { 
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Minimized Editor */
+.wpfe-editor-minimized {
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    z-index: 999997 !important;
+}
+
+.wpfe-editor-restore {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    background-color: var(--wpfe-primary) !important;
+    border: none !important;
+    color: var(--wpfe-white) !important;
+    padding: 8px 16px !important;
+    border-radius: 20px !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 8px var(--wpfe-shadow) !important;
+    transition: all var(--wpfe-transition-fast) !important;
+}
+
+.wpfe-editor-restore:hover {
+    background-color: var(--wpfe-primary-dark) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px var(--wpfe-shadow) !important;
+}
+
+.wpfe-editor-minimized-title {
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 200px !important;
 }
 
 /* Overlay */
@@ -300,6 +790,8 @@ textarea.wpfe-editor-input {
     bottom: 0 !important;
     background-color: rgba(0, 0, 0, 0.5) !important;
     z-index: 999998 !important;
+    backdrop-filter: blur(2px) !important;
+    transition: opacity var(--wpfe-transition-normal) !important;
 }
 
 /* Image Field */
@@ -327,34 +819,523 @@ textarea.wpfe-editor-input {
 /* Better display for hover buttons */
 /* This ensures buttons are more likely to be visible even if the theme has z-index issues */
 .wpfe-editable {
-    transform: translateZ(0);
+    transform: translateZ(0) !important;
 }
 
 .wpfe-editable .wpfe-edit-button {
-    transform: scale(0.9) translateY(5px);
-    opacity: 0;
+    transform: scale(0.9) translateY(5px) !important;
+    opacity: 0 !important;
     pointer-events: all !important;
+    transition: all 0.2s ease !important;
 }
 
-.wpfe-editable:hover .wpfe-edit-button {
-    transform: scale(1) translateY(0);
-    opacity: 1;
+.wpfe-editable:hover .wpfe-edit-button,
+.wpfe-element-hover .wpfe-edit-button,
+.wpfe-button-hover {
+    transform: scale(1) translateY(0) !important;
+    opacity: 1 !important;
+}
+
+/* Button variations based on element properties */
+.wpfe-button-external {
+    transform: scale(1) translateY(0) !important;
+    z-index: 9999 !important;
+}
+
+.wpfe-button-prominent {
+    padding: 10px !important;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid white !important;
+}
+
+.wpfe-button-large {
+    padding: 12px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+}
+
+.wpfe-button-overlay {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    opacity: 0 !important;
+    background-color: rgba(0, 0, 0, 0.7) !important;
+    border-radius: 50% !important;
+    width: 48px !important;
+    height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.wpfe-editable:hover .wpfe-button-overlay {
+    opacity: 0.9 !important;
+}
+
+/* Fix for buttons on images */
+.wpfe-image-editable {
+    overflow: visible !important;
+    display: inline-block !important;
+}
+
+/* Button that was repositioned due to visibility issues */
+.wpfe-button-adjusted {
+    box-shadow: 0 0 10px rgba(56, 88, 233, 0.8) !important;
+    border: 2px solid white !important;
+}
+
+/* Alternative button placement when visibility had issues */
+.wpfe-button-alternative {
+    background-color: rgba(56, 88, 233, 0.9) !important;
+    border: 2px solid white !important;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.4) !important;
+    position: fixed !important;
+    z-index: 999999 !important;
+    opacity: 1 !important;
+}
+
+/* Always visible buttons in mobile view */
+.wpfe-mobile-device .wpfe-editable .wpfe-edit-button {
+    opacity: 0.85 !important;
+    transform: scale(1) translateY(0) !important;
+}
+
+.wpfe-button-mobile {
+    min-width: 44px !important;  /* Larger touch target */
+    min-height: 44px !important;
+    opacity: 0.9 !important;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3) !important;
+    border: 2px solid white !important;
+}
+
+/* Special styling for the currently active element */
+.wpfe-editable-active {
+    position: relative !important;
+    z-index: 3 !important;
+}
+
+.wpfe-editable-active::after {
+    content: '' !important;
+    position: absolute !important;
+    top: -5px !important;
+    left: -5px !important;
+    right: -5px !important;
+    bottom: -5px !important;
+    border: 3px solid var(--wpfe-primary) !important;
+    border-radius: 3px !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+    animation: wpfe-pulse 2s infinite !important;
+}
+
+.wpfe-editable-active .wpfe-edit-button {
+    opacity: 1 !important;
+    transform: scale(1.1) !important;
+    box-shadow: 0 0 15px rgba(56, 88, 233, 0.5) !important;
 }
 
 /* Added indicator for editable content */
 .wpfe-highlight-editable .wpfe-editable::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border: 1px dotted rgba(56, 88, 233, 0.3);
-    pointer-events: none;
-    z-index: 1;
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    border: 1px dotted rgba(56, 88, 233, 0.3) !important;
+    pointer-events: none !important;
+    z-index: 1 !important;
 }
 
-/* ACF field styling */
+/* Styles for elements identified by different methods */
+.wpfe-editable[data-wpfe-identified-by="primary-selector"] {
+    outline: 1px dashed rgba(56, 88, 233, 0.3) !important;
+}
+
+.wpfe-editable[data-wpfe-identified-by="content-match"] {
+    outline: 1px dashed rgba(46, 204, 113, 0.4) !important;
+}
+
+.wpfe-editable[data-wpfe-identified-by="discovery"] {
+    outline: 1px dashed rgba(241, 196, 15, 0.4) !important;
+}
+
+/* Highlight animation for newly identified elements */
+@keyframes wpfe-identify-pulse {
+    0% { outline-color: rgba(56, 88, 233, 0.8); }
+    50% { outline-color: rgba(56, 88, 233, 0.2); }
+    100% { outline-color: rgba(56, 88, 233, 0.8); }
+}
+
+/* Field identification badge */
+.wpfe-editable::after {
+    content: attr(data-wpfe-field-label) !important;
+    position: absolute !important;
+    top: -18px !important;
+    left: 0 !important;
+    font-size: 10px !important;
+    background-color: var(--wpfe-primary) !important;
+    color: white !important;
+    padding: 2px 6px !important;
+    border-radius: 3px !important;
+    opacity: 0 !important;
+    transition: opacity 0.2s ease !important;
+    z-index: 2 !important;
+    pointer-events: none !important;
+    white-space: nowrap !important;
+}
+
+.wpfe-editable:hover::after {
+    opacity: 0.9 !important;
+}
+
+/* WordPress Native Field Styling */
+.wpfe-editor-wp-title-field .wpfe-editor-title-input {
+    font-size: 1.7em !important;
+    line-height: 1.3 !important;
+    padding: 8px 12px !important;
+    margin-bottom: 8px !important;
+    width: 100% !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.07) inset !important;
+    transition: border-color 0.15s ease-in-out !important;
+}
+
+.wpfe-editor-wp-title-field .wpfe-editor-title-input:focus {
+    border-color: var(--wpfe-primary) !important;
+    box-shadow: 0 0 0 1px var(--wpfe-primary) !important;
+    outline: none !important;
+}
+
+.wpfe-editor-wp-content-field .mce-panel {
+    border-color: var(--wpfe-border) !important;
+}
+
+.wpfe-editor-wp-excerpt-field .wpfe-editor-excerpt {
+    width: 100% !important;
+    min-height: 110px !important;
+    padding: 8px 12px !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+}
+
+.wpfe-editor-wp-excerpt-field .wpfe-field-description {
+    font-size: 13px !important;
+    color: var(--wpfe-gray-600) !important;
+    margin-top: 8px !important;
+    font-style: italic !important;
+}
+
+.wpfe-featured-image-container {
+    border: 1px solid var(--wpfe-border) !important;
+    padding: 16px !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    background-color: var(--wpfe-gray-100) !important;
+}
+
+.wpfe-featured-image-preview {
+    margin-bottom: 12px !important;
+    background-color: var(--wpfe-white) !important;
+    padding: 4px !important;
+    border: 1px solid var(--wpfe-border) !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.07) !important;
+    display: flex !important;
+    justify-content: center !important;
+}
+
+.wpfe-featured-image {
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: 250px !important;
+}
+
+.wpfe-featured-image-placeholder {
+    padding: 40px 20px !important;
+    text-align: center !important;
+    background-color: var(--wpfe-white) !important;
+    border: 1px dashed var(--wpfe-border) !important;
+}
+
+.wpfe-featured-image-actions {
+    margin-top: 12px !important;
+}
+
+/* ACF Field Styling */
+.wpfe-editor-acf-field {
+    padding: 16px !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    background-color: var(--wpfe-white) !important;
+    margin-bottom: 16px !important;
+}
+
+.wpfe-acf-field-label {
+    margin-bottom: 8px !important;
+}
+
+.wpfe-acf-field-label label {
+    font-weight: bold !important;
+    color: var(--wpfe-gray-800) !important;
+    font-size: 13px !important;
+    display: inline-block !important;
+}
+
+.wpfe-acf-required {
+    color: #d94f4f !important;
+    margin-left: 4px !important;
+}
+
+.wpfe-acf-field-instructions {
+    margin-bottom: 8px !important;
+    font-size: 12px !important;
+    color: var(--wpfe-gray-600) !important;
+}
+
+.wpfe-acf-field-input {
+    position: relative !important;
+}
+
+/* ACF Text & Textarea */
+.wpfe-acf-text-input, 
+.wpfe-acf-textarea-input,
+.wpfe-acf-number-input,
+.wpfe-acf-date-picker {
+    width: 100% !important;
+    padding: 8px !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.07) inset !important;
+}
+
+.wpfe-acf-text-input:focus,
+.wpfe-acf-textarea-input:focus,
+.wpfe-acf-number-input:focus,
+.wpfe-acf-date-picker:focus {
+    border-color: var(--wpfe-primary) !important;
+    box-shadow: 0 0 0 1px var(--wpfe-primary) !important;
+    outline: none !important;
+}
+
+.wpfe-acf-textarea-input {
+    min-height: 120px !important;
+    resize: vertical !important;
+}
+
+/* ACF Select */
+.wpfe-acf-select-input {
+    width: 100% !important;
+    height: 32px !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    font-size: 14px !important;
+    padding: 2px 24px 2px 8px !important;
+    background-color: var(--wpfe-white) !important;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg width="20" height="20" xmlns="http://www.w3.org/2000/svg"><path d="M5 6l5 5 5-5 2 1-7 7-7-7z" fill="%23555D66"/></svg>') !important;
+    background-position: right 5px top 55% !important;
+    background-repeat: no-repeat !important;
+    background-size: 16px 16px !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+}
+
+/* ACF Checkboxes & Radio */
+.wpfe-acf-checkbox-wrap,
+.wpfe-acf-radio-wrap,
+.wpfe-acf-true-false-wrap {
+    padding: 5px !important;
+}
+
+.wpfe-acf-checkbox-label,
+.wpfe-acf-radio-label,
+.wpfe-acf-true-false-label {
+    display: block !important;
+    margin-bottom: 8px !important;
+    font-weight: normal !important;
+    cursor: pointer !important;
+}
+
+.wpfe-acf-checkbox-input,
+.wpfe-acf-radio-input,
+.wpfe-acf-true-false-input {
+    margin-right: 8px !important;
+}
+
+/* ACF Image */
+.wpfe-acf-image-wrap {
+    position: relative !important;
+}
+
+.wpfe-acf-image-preview {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 10px !important;
+    padding: 5px !important;
+    background-color: var(--wpfe-white) !important;
+    border: 1px solid var(--wpfe-border) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+.wpfe-acf-image {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 250px !important;
+    display: block !important;
+}
+
+.wpfe-acf-image-placeholder {
+    width: 100% !important;
+    height: 100px !important;
+    border: 1px dashed var(--wpfe-border) !important;
+    background-color: var(--wpfe-gray-100) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 10px !important;
+}
+
+.wpfe-acf-image-placeholder-inner {
+    font-size: 24px !important;
+    color: var(--wpfe-gray-400) !important;
+}
+
+.wpfe-acf-image-actions {
+    display: flex !important;
+    gap: 8px !important;
+}
+
+/* ACF Gallery */
+.wpfe-acf-gallery-wrap {
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    background-color: var(--wpfe-gray-100) !important;
+    padding: 12px !important;
+}
+
+.wpfe-acf-gallery-attachments {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+    min-height: 60px !important;
+    background-color: var(--wpfe-white) !important;
+    border: 1px dashed var(--wpfe-border) !important;
+    padding: 10px !important;
+}
+
+.wpfe-acf-gallery-item {
+    position: relative !important;
+    width: 80px !important;
+    height: 80px !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+    overflow: hidden !important;
+    cursor: move !important;
+    transition: transform 0.2s, box-shadow 0.2s !important;
+}
+
+.wpfe-acf-gallery-item:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
+}
+
+.wpfe-acf-gallery-item-inner {
+    width: 100% !important;
+    height: 100% !important;
+    position: relative !important;
+}
+
+.wpfe-acf-gallery-item img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
+
+.wpfe-acf-gallery-item-actions {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    background: rgba(0,0,0,0.5) !important;
+    display: flex !important;
+    opacity: 0 !important;
+    transition: opacity 0.2s !important;
+}
+
+.wpfe-acf-gallery-item:hover .wpfe-acf-gallery-item-actions {
+    opacity: 1 !important;
+}
+
+.wpfe-acf-gallery-item-remove {
+    background: none !important;
+    border: none !important;
+    color: white !important;
+    cursor: pointer !important;
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 16px !important;
+    text-decoration: none !important;
+}
+
+.wpfe-acf-gallery-add {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background-color: var(--wpfe-primary) !important;
+    color: var(--wpfe-white) !important;
+    border: none !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s !important;
+}
+
+.wpfe-acf-gallery-add:hover {
+    background-color: var(--wpfe-primary-dark) !important;
+    color: var(--wpfe-white) !important; /* Stay white on hover */
+}
+
+/* Color Picker */
+.wpfe-acf-color-picker {
+    height: 28px !important;
+}
+
+.wp-picker-container {
+    position: relative !important;
+}
+
+.wp-picker-holder {
+    position: absolute !important;
+    z-index: 10 !important;
+}
+
+/* Date Picker */
+.wpfe-acf-date-picker-wrap {
+    position: relative !important;
+}
+
+.wpfe-acf-date-picker-wrap::after {
+    content: "\f508" !important;
+    font-family: dashicons !important;
+    position: absolute !important;
+    right: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: var(--wpfe-gray-500) !important;
+    pointer-events: none !important;
+}
+
+/* Default Fields (Non-ACF or custom) */
 .wpfe-field {
     margin-bottom: 20px !important;
 }
@@ -363,7 +1344,7 @@ textarea.wpfe-editor-input {
     display: block !important;
     margin-bottom: 8px !important;
     font-weight: 600 !important;
-    color: #23282d !important;
+    color: var(--wpfe-gray-800) !important;
     font-size: 14px !important;
 }
 
@@ -371,9 +1352,10 @@ textarea.wpfe-editor-input {
     width: 100% !important;
     padding: 8px !important;
     border: 1px solid var(--wpfe-border) !important;
-    border-radius: 3px !important;
+    border-radius: var(--wpfe-border-radius) !important;
     font-size: 14px !important;
     line-height: 1.5 !important;
+    height: var(--wpfe-input-height) !important;
 }
 
 .wpfe-input:focus {
@@ -382,83 +1364,25 @@ textarea.wpfe-editor-input {
     outline: none !important;
 }
 
-/* Repeater fields */
-.wpfe-repeater-row {
-    margin-bottom: 15px !important;
-    border: 1px solid var(--wpfe-border) !important;
-    border-radius: 4px !important;
-    background-color: var(--wpfe-white) !important;
+/* Unsupported field types */
+.wpfe-editor-field-unsupported,
+.wpfe-acf-field-unsupported {
+    background-color: var(--wpfe-warning-light) !important;
+    border: 1px solid var(--wpfe-warning) !important;
+    color: var(--wpfe-gray-800) !important;
+    padding: 10px !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    font-size: 13px !important;
 }
 
-.wpfe-repeater-row-handle {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    padding: 10px 15px !important;
-    background-color: var(--wpfe-light-gray) !important;
-    border-bottom: 1px solid var(--wpfe-border) !important;
-    cursor: pointer !important;
+/* Editor Field Transitions */
+.wpfe-editor-field {
+    transition: box-shadow 0.3s ease, transform 0.3s ease !important;
 }
 
-.wpfe-repeater-row-content {
-    padding: 15px !important;
-}
-
-.wpfe-repeater-row-toggle {
-    background: none !important;
-    border: none !important;
-    cursor: pointer !important;
-    padding: 0 !important;
-    color: #666 !important;
-}
-
-.wpfe-repeater-sub-field {
-    margin-bottom: 15px !important;
-}
-
-.wpfe-add-row {
-    margin-top: 10px !important;
-}
-
-/* Flexible content fields */
-.wpfe-flexible-content-layout {
-    margin-bottom: 15px !important;
-    border: 1px solid var(--wpfe-border) !important;
-    border-radius: 4px !important;
-    background-color: var(--wpfe-white) !important;
-}
-
-.wpfe-flexible-content-layout-handle {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    padding: 10px 15px !important;
-    background-color: var(--wpfe-light-gray) !important;
-    border-bottom: 1px solid var(--wpfe-border) !important;
-    cursor: pointer !important;
-}
-
-.wpfe-flexible-content-layout-content {
-    padding: 15px !important;
-}
-
-.wpfe-flexible-content-layout-toggle {
-    background: none !important;
-    border: none !important;
-    cursor: pointer !important;
-    padding: 0 !important;
-    color: #666 !important;
-}
-
-.wpfe-flexible-content-add {
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    margin-top: 10px !important;
-}
-
-.wpfe-flexible-content-select {
-    flex: 1 !important;
+.wpfe-editor-field:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+    transform: translateY(-1px) !important;
 }
 
 /* Ensure visibility regardless of theme's CSS */
@@ -472,32 +1396,21 @@ textarea.wpfe-editor-input {
     position: relative !important;
 }
 
-/* Media field */
-.wpfe-media-field {
-    margin-bottom: 15px !important;
+/* Live preview animations */
+@keyframes wpfe-preview-flash {
+    0% { outline-color: rgba(0, 163, 42, 0); }
+    25% { outline-color: rgba(0, 163, 42, 0.7); }
+    100% { outline-color: rgba(0, 163, 42, 0); }
 }
 
-.wpfe-media-preview {
-    margin-bottom: 10px !important;
-    max-width: 150px !important;
+.wpfe-preview-updated {
+    outline: 2px solid rgba(0, 163, 42, 0) !important;
+    animation: wpfe-preview-flash 1s ease !important;
 }
 
-.wpfe-media-buttons {
-    display: flex !important;
-    gap: 5px !important;
-}
-
-.wpfe-file-preview {
-    display: flex !important;
-    align-items: center !important;
-    background: #f9f9f9 !important;
-    padding: 8px !important;
-    border: 1px solid #ddd !important;
-    border-radius: 4px !important;
-}
-
-.wpfe-file-preview .dashicons {
-    margin-right: 8px !important;
+/* Minimized editor button */
+.wpfe-editor-is-minimized .wpfe-editable {
+    outline: 1px dashed var(--wpfe-primary-light) !important;
 }
 
 /* Gallery field */
@@ -730,4 +1643,332 @@ textarea.wpfe-editor-input {
 .wpfe-editable {
     min-height: 20px !important;
     min-width: 20px !important;
+}
+
+/* ==========================================================================
+   Responsive Styles
+   ========================================================================== */
+
+/* Tablet Styles (768px - 1024px) */
+@media screen and (max-width: 1024px) {
+    .wpfe-editor-sidebar {
+        width: var(--wpfe-sidebar-width-tablet) !important;
+        transform: translateX(var(--wpfe-sidebar-width-tablet));
+    }
+    
+    .wpfe-editor-sidebar.position-left {
+        transform: translateX(calc(-1 * var(--wpfe-sidebar-width-tablet)));
+    }
+    
+    .wpfe-editor-sidebar.is-active {
+        transform: translateX(0);
+    }
+    
+    /* Adjust field layouts for medium screens */
+    .wpfe-acf-field-input {
+        flex-direction: column;
+    }
+    
+    .wpfe-relationship-wrapper {
+        flex-direction: column;
+    }
+    
+    .wpfe-relationship-available,
+    .wpfe-relationship-selected {
+        width: 100%;
+        margin-bottom: 16px;
+    }
+}
+
+/* Mobile Styles (up to 767px) */
+@media screen and (max-width: 767px) {
+    /* Core sidebar adjustments */
+    .wpfe-editor-sidebar {
+        width: var(--wpfe-sidebar-width-mobile) !important;
+        max-height: var(--wpfe-sidebar-height-mobile) !important;
+        top: auto !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        border-radius: 16px 16px 0 0;
+        transform: translateY(100%);
+        box-shadow: 0 -2px 10px var(--wpfe-shadow);
+    }
+    
+    .wpfe-editor-sidebar.is-active {
+        transform: translateY(0);
+    }
+    
+    /* Adjust position classes for mobile */
+    .wpfe-editor-sidebar.position-left,
+    .wpfe-editor-sidebar.position-right {
+        transform: translateY(100%);
+    }
+    
+    .wpfe-editor-sidebar.position-left.is-active,
+    .wpfe-editor-sidebar.position-right.is-active {
+        transform: translateY(0);
+    }
+    
+    /* Add swipe handle for mobile */
+    .wpfe-editor-sidebar-header::before {
+        content: '';
+        display: block;
+        width: 36px;
+        height: 4px;
+        background-color: var(--wpfe-gray-300);
+        border-radius: 2px;
+        margin: 8px auto;
+    }
+    
+    /* Improve mobile tab layout */
+    .wpfe-editor-sidebar-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+        padding-bottom: 4px;
+    }
+    
+    /* Enhanced touch targets */
+    .wpfe-editor-tab {
+        min-height: var(--wpfe-touch-target-size);
+        padding: 0 16px;
+    }
+    
+    /* All buttons should have minimum size */
+    .wpfe-editor-sidebar button,
+    .wpfe-editor-sidebar input[type="submit"],
+    .wpfe-editor-sidebar .button {
+        min-height: var(--wpfe-touch-target-size);
+        min-width: var(--wpfe-touch-target-size);
+        line-height: var(--wpfe-touch-target-size);
+    }
+    
+    /* Touch-friendly checkboxes and radio buttons */
+    .wpfe-acf-checkbox-label,
+    .wpfe-acf-radio-label {
+        min-height: var(--wpfe-touch-target-size);
+        display: flex;
+        align-items: center;
+        padding: 4px 0;
+    }
+    
+    /* Improve touch targets for edit buttons */
+    .wpfe-edit-button {
+        min-width: var(--wpfe-button-size-mobile);
+        min-height: var(--wpfe-button-size-mobile);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Mobile-friendly inputs */
+    .wpfe-editor-sidebar input[type="text"],
+    .wpfe-editor-sidebar input[type="number"],
+    .wpfe-editor-sidebar input[type="email"],
+    .wpfe-editor-sidebar input[type="url"],
+    .wpfe-editor-sidebar input[type="password"],
+    .wpfe-editor-sidebar textarea,
+    .wpfe-editor-sidebar select {
+        font-size: var(--wpfe-font-size-mobile);
+        height: var(--wpfe-input-height-mobile);
+        padding: 8px 12px;
+    }
+    
+    /* Textarea height */
+    .wpfe-editor-sidebar textarea {
+        min-height: 100px;
+    }
+    
+    /* Adjust field spacing for better mobile UX */
+    .wpfe-editor-field {
+        margin-bottom: 24px;
+    }
+    
+    /* Make sidebar actions more accessible */
+    .wpfe-editor-sidebar-footer {
+        padding: 16px;
+    }
+    
+    .wpfe-editor-sidebar-actions {
+        flex-direction: column;
+    }
+    
+    .wpfe-editor-main-actions {
+        display: flex;
+        width: 100%;
+        margin-top: 12px;
+    }
+    
+    .wpfe-editor-sidebar-cancel,
+    .wpfe-editor-sidebar-save {
+        flex: 1;
+        min-height: var(--wpfe-button-size-mobile);
+    }
+    
+    /* Modal improvements for touch */
+    .wp-core-ui .media-modal-content {
+        min-height: 100%;
+    }
+    
+    /* Improve minimized mode for mobile */
+    .wpfe-editor-minimized {
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        border-radius: 0;
+    }
+    
+    .wpfe-editor-restore {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        min-height: var(--wpfe-button-size-mobile);
+        padding: 12px;
+    }
+    
+    /* Wysiwyg editor mobile fixes */
+    .wpfe-editor-wysiwyg-container .mce-toolbar button {
+        min-height: var(--wpfe-touch-target-size);
+        min-width: var(--wpfe-touch-target-size);
+    }
+}
+
+/* Larger phones in landscape mode */
+@media screen and (min-width: 568px) and (max-width: 767px) and (orientation: landscape) {
+    .wpfe-editor-sidebar {
+        max-height: 85vh !important;
+    }
+    
+    .wpfe-editor-sidebar-content {
+        max-height: calc(85vh - 140px);
+    }
+}
+
+/* ==========================================================================
+   Keyboard Shortcuts Modal
+   ========================================================================== */
+
+.wpfe-keyboard-shortcuts-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.wpfe-keyboard-shortcuts-modal.is-active {
+    opacity: 1;
+}
+
+.wpfe-keyboard-shortcuts-modal-content {
+    background-color: var(--wpfe-white);
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+}
+
+.wpfe-keyboard-shortcuts-modal.is-active .wpfe-keyboard-shortcuts-modal-content {
+    transform: translateY(0);
+}
+
+.wpfe-keyboard-shortcuts-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: var(--wpfe-gray-700);
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.wpfe-keyboard-shortcuts-close:hover {
+    background-color: var(--wpfe-gray-100);
+    color: var(--wpfe-gray-900);
+}
+
+.wpfe-keyboard-shortcuts h3 {
+    color: var(--wpfe-gray-900);
+    font-size: 18px;
+    margin-top: 0;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--wpfe-gray-200);
+}
+
+.wpfe-shortcuts-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.wpfe-shortcuts-table th {
+    text-align: left;
+    color: var(--wpfe-gray-700);
+    font-weight: 600;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--wpfe-gray-200);
+}
+
+.wpfe-shortcuts-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--wpfe-gray-100);
+    vertical-align: middle;
+}
+
+.wpfe-shortcuts-table tr:last-child td {
+    border-bottom: none;
+}
+
+.wpfe-shortcuts-table kbd {
+    display: inline-block;
+    background-color: var(--wpfe-gray-100);
+    border: 1px solid var(--wpfe-gray-300);
+    border-radius: 3px;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+    color: var(--wpfe-gray-900);
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1;
+    padding: 4px 8px;
+    white-space: nowrap;
+}
+
+/* Mobile adjustments for shortcuts modal */
+@media screen and (max-width: 767px) {
+    .wpfe-keyboard-shortcuts-modal-content {
+        padding: 16px;
+        width: 95%;
+    }
+    
+    .wpfe-shortcuts-table td,
+    .wpfe-shortcuts-table th {
+        padding: 8px 6px;
+    }
+    
+    .wpfe-shortcuts-table kbd {
+        font-size: 12px;
+        padding: 3px 6px;
+    }
 }

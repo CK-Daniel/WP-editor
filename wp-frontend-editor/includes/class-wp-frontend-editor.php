@@ -159,6 +159,39 @@ class WP_Frontend_Editor {
             wp_add_inline_style( 'wp-frontend-editor', $this->options['custom_css'] );
         }
 
+        // Get basic post content for content-based field identification
+        $post_id = get_the_ID();
+        $page_content = array();
+        
+        if ($post_id) {
+            $post = get_post($post_id);
+            if ($post) {
+                $page_content = array(
+                    'post_title' => $post->post_title,
+                    'post_content' => wp_strip_all_tags($post->post_content),
+                    'post_excerpt' => $post->post_excerpt,
+                );
+                
+                // Get featured image if available
+                if (has_post_thumbnail($post_id)) {
+                    $page_content['featured_image'] = get_post_thumbnail_id($post_id);
+                }
+                
+                // Add ACF field values if ACF is active
+                if ($this->is_acf_active() && function_exists('get_fields')) {
+                    $acf_fields = get_fields($post_id);
+                    if (is_array($acf_fields)) {
+                        foreach ($acf_fields as $key => $value) {
+                            // For text-like fields, store for content matching
+                            if (is_string($value) && !is_serialized($value)) {
+                                $page_content['acf_' . $key] = $value;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         // Pass data to JavaScript
         wp_localize_script(
             'wp-frontend-editor',
@@ -168,7 +201,7 @@ class WP_Frontend_Editor {
                 'rest_api_url'      => rest_url( 'wp-frontend-editor/v1' ),
                 'nonce'             => wp_create_nonce( 'wpfe-editor-nonce' ),
                 'rest_nonce'        => wp_create_nonce( 'wp_rest' ),
-                'post_id'           => get_the_ID(),
+                'post_id'           => $post_id,
                 'is_acf_active'     => $this->is_acf_active(),
                 'enable_inline'     => isset( $this->options['enable_inline'] ) ? (bool) $this->options['enable_inline'] : true,
                 'button_position'   => isset( $this->options['button_position'] ) ? $this->options['button_position'] : 'top-right',
@@ -179,6 +212,8 @@ class WP_Frontend_Editor {
                 'auto_save_inline'  => isset( $this->options['auto_save_inline'] ) ? (bool) $this->options['auto_save_inline'] : false,
                 'live_preview'      => isset( $this->options['live_preview'] ) ? (bool) $this->options['live_preview'] : true,
                 'show_toolbar'      => isset( $this->options['show_toolbar'] ) ? (bool) $this->options['show_toolbar'] : false,
+                'discover_fields'   => isset( $this->options['discover_fields'] ) ? (bool) $this->options['discover_fields'] : true,
+                'page_content'      => $page_content,
                 'i18n'              => array(
                     'edit'            => __( 'Edit', 'wp-frontend-editor' ),
                     'save'            => __( 'Save', 'wp-frontend-editor' ),
@@ -190,6 +225,7 @@ class WP_Frontend_Editor {
                     'select'          => __( 'Select', 'wp-frontend-editor' ),
                     'remove'          => __( 'Remove', 'wp-frontend-editor' ),
                     'unsupported_field' => __( 'This field type is not supported yet.', 'wp-frontend-editor' ),
+                    'discovered_field' => __( 'Discovered field', 'wp-frontend-editor' ),
                 ),
             )
         );
