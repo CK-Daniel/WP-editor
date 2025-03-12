@@ -481,80 +481,106 @@
          * @param {number} postId The post ID.
          */
         addEditButton: function($element, fieldName, postId) {
-            var self = this;
-            var buttonContent = '';
-            var positionClass = 'wpfe-button-' + (wpfe_data.button_position || 'top-right');
-            
-            // Remove any existing edit buttons in this element
-            $element.find('.wpfe-edit-button').remove();
-            
-            // Prepare the element for button placement
-            this.prepareElementForEditing($element);
-            
-            // Button content based on style
-            if (wpfe_data.button_style === 'icon-text') {
-                buttonContent = '<span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="wpfe-button-text">' + wpfe_data.i18n.edit + '</span>';
-            } else if (wpfe_data.button_style === 'text-only') {
-                buttonContent = '<span class="wpfe-button-text">' + wpfe_data.i18n.edit + '</span>';
-            } else {
-                buttonContent = '<span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">' + wpfe_data.i18n.edit + '</span>';
-            }
-            
-            // Get field label if available
-            var fieldLabel = fieldName;
-            if (this.fields && this.fields[fieldName] && this.fields[fieldName].label) {
-                fieldLabel = this.fields[fieldName].label;
-            } else {
-                // Try to make the field name more readable
-                fieldLabel = fieldName.replace(/^post_/, '')
-                                     .replace(/^acf_/, '')
-                                     .replace(/_/g, ' ')
-                                     .replace(/-/g, ' ');
-                fieldLabel = fieldLabel.charAt(0).toUpperCase() + fieldLabel.slice(1);
-                
-                // Add "field type" indicator for discovered fields
-                if ($element.data('wpfe-identified-by') === 'discovery') {
-                    fieldLabel += ' (' + wpfe_data.i18n.discovered_field + ')';
+            // Safety checks
+            if (!$element || !$element.length || !fieldName) {
+                if (wpfe_data.debug_mode) {
+                    console.warn('Cannot add edit button: Invalid element or field name', fieldName);
                 }
+                return;
             }
             
-            // Create button element with tooltip
-            var $button = $('<button>')
-                .addClass('wpfe-edit-button ' + positionClass)
-                .attr('data-wpfe-field', fieldName)
-                .attr('data-wpfe-post-id', postId)
-                .attr('data-wpfe-field-label', fieldLabel)
-                .attr('aria-label', wpfe_data.i18n.edit + ' ' + fieldLabel)
-                .attr('title', wpfe_data.i18n.edit + ' ' + fieldLabel)
-                .html(buttonContent);
-            
-            // Add button to the element
-            $element.append($button);
-            
-            // Handle button positioning based on element characteristics
-            this.optimizeButtonPosition($element, $button);
-            
-            // Add hover event to improve button visibility
-            $element.on('mouseenter.wpfe', function() {
-                $(this).addClass('wpfe-element-hover');
+            try {
+                var self = this;
+                var buttonContent = '';
+                var positionClass = 'wpfe-button-' + (wpfe_data.button_position || 'top-right');
                 
-                // Make sure button is fully visible when element is hovered
-                if (!$(this).hasClass('wpfe-editable-active')) {
-                    var $btn = $(this).find('.wpfe-edit-button');
-                    $btn.addClass('wpfe-button-hover');
+                // Remove any existing edit buttons in this element
+                $element.find('.wpfe-edit-button').remove();
+                
+                // Prepare the element for button placement
+                this.prepareElementForEditing($element);
+                
+                // Button content based on style
+                if (wpfe_data.button_style === 'icon-text') {
+                    buttonContent = '<span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="wpfe-button-text">' + wpfe_data.i18n.edit + '</span>';
+                } else if (wpfe_data.button_style === 'text-only') {
+                    buttonContent = '<span class="wpfe-button-text">' + wpfe_data.i18n.edit + '</span>';
+                } else {
+                    buttonContent = '<span class="dashicons dashicons-edit" aria-hidden="true"></span><span class="screen-reader-text">' + wpfe_data.i18n.edit + '</span>';
+                }
+                
+                // Get field label if available
+                var fieldLabel = fieldName;
+                if (this.fields && this.fields[fieldName] && this.fields[fieldName].label) {
+                    fieldLabel = this.fields[fieldName].label;
+                } else {
+                    // Try to make the field name more readable
+                    fieldLabel = fieldName.replace(/^post_/, '')
+                                         .replace(/^acf_/, '')
+                                         .replace(/_/g, ' ')
+                                         .replace(/-/g, ' ');
+                    fieldLabel = fieldLabel.charAt(0).toUpperCase() + fieldLabel.slice(1);
                     
-                    // Check if button is partially outside viewport
-                    self.ensureButtonVisibility($btn);
+                    // Add "field type" indicator for discovered fields
+                    if ($element.data('wpfe-identified-by') === 'discovery') {
+                        fieldLabel += ' (' + wpfe_data.i18n.discovered_field + ')';
+                    }
                 }
-            }).on('mouseleave.wpfe', function() {
-                $(this).removeClass('wpfe-element-hover');
-                $(this).find('.wpfe-edit-button').removeClass('wpfe-button-hover');
-            });
-            
-            // Run a detection check if button might be hidden by theme CSS
-            setTimeout(function() {
-                self.verifyButtonVisibility($element, $button);
-            }, 500);
+                
+                // Create button element with tooltip
+                var $button = $('<button>')
+                    .addClass('wpfe-edit-button ' + positionClass)
+                    .attr('data-wpfe-field', fieldName)
+                    .attr('data-wpfe-post-id', postId)
+                    .attr('data-wpfe-field-label', fieldLabel)
+                    .attr('aria-label', wpfe_data.i18n.edit + ' ' + fieldLabel)
+                    .attr('title', wpfe_data.i18n.edit + ' ' + fieldLabel)
+                    .html(buttonContent);
+                
+                // Add button to the element
+                $element.append($button);
+                
+                // Verify the button was actually added to the DOM
+                if (!$element.find('.wpfe-edit-button').length) {
+                    if (wpfe_data.debug_mode) {
+                        console.warn('Edit button could not be appended to element', $element);
+                    }
+                    return;
+                }
+                
+                // Handle button positioning based on element characteristics
+                this.optimizeButtonPosition($element, $button);
+                
+                // Add hover event to improve button visibility
+                $element.off('mouseenter.wpfe mouseleave.wpfe').on('mouseenter.wpfe', function() {
+                    $(this).addClass('wpfe-element-hover');
+                    
+                    // Make sure button is fully visible when element is hovered
+                    if (!$(this).hasClass('wpfe-editable-active')) {
+                        var $btn = $(this).find('.wpfe-edit-button');
+                        if ($btn.length) {
+                            $btn.addClass('wpfe-button-hover');
+                            
+                            // Check if button is partially outside viewport
+                            self.ensureButtonVisibility($btn);
+                        }
+                    }
+                }).on('mouseleave.wpfe', function() {
+                    $(this).removeClass('wpfe-element-hover');
+                    $(this).find('.wpfe-edit-button').removeClass('wpfe-button-hover');
+                });
+                
+                // Run a detection check if button might be hidden by theme CSS
+                setTimeout(function() {
+                    if ($element && $element.length && $button && $button.length) {
+                        self.verifyButtonVisibility($element, $button);
+                    }
+                }, 500);
+            } catch (e) {
+                if (wpfe_data.debug_mode) {
+                    console.error('Error adding edit button:', e);
+                }
+            }
         },
         
         /**
@@ -602,69 +628,86 @@
          * @param {jQuery} $button The edit button
          */
         optimizeButtonPosition: function($element, $button) {
-            var positionClass = $button.attr('class').match(/wpfe-button-([\w-]+)/) ? 
-                                $button.attr('class').match(/wpfe-button-([\w-]+)/)[0] : '';
-            
-            // Element size-based adjustments
-            var elementWidth = $element.outerWidth();
-            var elementHeight = $element.outerHeight();
-            
-            // For images, always place button in center
-            if ($element.is('img') || ($element.find('img').length === 1 && $element.text().trim().length < 20)) {
-                $button.addClass('wpfe-button-overlay');
-                $element.addClass('wpfe-image-editable');
+            // Safety checks
+            if (!$element || !$element.length || !$button || !$button.length) {
                 return;
             }
             
-            // For very small elements, position button outside
-            if (elementWidth < 80 || elementHeight < 40) {
-                $button.addClass('wpfe-button-external');
+            try {
+                var positionClass = '';
+                var buttonClass = $button.attr('class');
                 
-                if (positionClass.indexOf('right') !== -1) {
-                    $button.css('right', '-30px');
-                } else {
-                    $button.css('left', '-30px');
+                if (buttonClass) {
+                    var match = buttonClass.match(/wpfe-button-([\w-]+)/);
+                    positionClass = match ? match[0] : '';
                 }
                 
-                // If element is at the edge of its container, adjust button to be visible
-                var elementOffset = $element.offset();
-                var windowWidth = $(window).width();
+                // Element size-based adjustments
+                var elementWidth = $element.outerWidth() || 0;
+                var elementHeight = $element.outerHeight() || 0;
                 
-                if (elementOffset.left < 40) {
-                    // Too close to left edge
-                    $button.css({
-                        'left': '0',
-                        'right': 'auto'
-                    });
-                } else if (windowWidth - (elementOffset.left + elementWidth) < 40) {
-                    // Too close to right edge
-                    $button.css({
-                        'right': '0',
-                        'left': 'auto'
-                    });
-                }
-            }
-            
-            // For larger elements, optimize based on content density
-            else {
-                // Check if element has a lot of text content (dense)
-                var textLength = $element.text().trim().length;
-                var contentDensity = textLength / (elementWidth * elementHeight);
-                
-                // For dense content, make button more prominent
-                if (contentDensity > 0.01) {
-                    $button.addClass('wpfe-button-prominent');
+                // For images, always place button in center
+                if ($element.is('img') || ($element.find('img').length === 1 && $element.text().trim().length < 20)) {
+                    $button.addClass('wpfe-button-overlay');
+                    $element.addClass('wpfe-image-editable');
+                    return;
                 }
                 
-                // For large, sparse elements (like large images or headings)
-                if (contentDensity < 0.005 && (elementWidth > 300 || elementHeight > 200)) {
-                    $button.addClass('wpfe-button-large');
+                // For very small elements, position button outside
+                if (elementWidth < 80 || elementHeight < 40) {
+                    $button.addClass('wpfe-button-external');
+                    
+                    if (positionClass.indexOf('right') !== -1) {
+                        $button.css('right', '-30px');
+                    } else {
+                        $button.css('left', '-30px');
+                    }
+                    
+                    // If element is at the edge of its container, adjust button to be visible
+                    var elementOffset = $element.offset() || { left: 0, top: 0 };
+                    var windowWidth = $(window).width();
+                    
+                    if (elementOffset.left < 40) {
+                        // Too close to left edge
+                        $button.css({
+                            'left': '0',
+                            'right': 'auto'
+                        });
+                    } else if (windowWidth - (elementOffset.left + elementWidth) < 40) {
+                        // Too close to right edge
+                        $button.css({
+                            'right': '0',
+                            'left': 'auto'
+                        });
+                    }
                 }
-            }
-            
-            // For mobile devices, make buttons larger and more visible
-            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-                $button.addClass('wpfe-button-mobile');
+                
+                // For larger elements, optimize based on content density
+                else {
+                    // Check if element has a lot of text content (dense)
+                    var textLength = $element.text().trim().length;
+                    var contentDensity = elementWidth * elementHeight > 0 ? 
+                                         textLength / (elementWidth * elementHeight) : 0;
+                    
+                    // For dense content, make button more prominent
+                    if (contentDensity > 0.01) {
+                        $button.addClass('wpfe-button-prominent');
+                    }
+                    
+                    // For large, sparse elements (like large images or headings)
+                    if (contentDensity < 0.005 && (elementWidth > 300 || elementHeight > 200)) {
+                        $button.addClass('wpfe-button-large');
+                    }
+                }
+                
+                // For mobile devices, make buttons larger and more visible
+                if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                    $button.addClass('wpfe-button-mobile');
+                }
+            } catch (e) {
+                if (wpfe_data.debug_mode) {
+                    console.warn('Error optimizing button position:', e);
+                }
             }
         },
         
@@ -676,57 +719,85 @@
          * @param {jQuery} $button The edit button
          */
         verifyButtonVisibility: function($element, $button) {
-            // Skip if debugging is off
-            if (!wpfe_data.debug_mode) {
+            // Safety checks
+            if (!$element || !$element.length || !$button || !$button.length) {
                 return;
             }
             
-            // Check if button is visible (has width and height)
-            var buttonWidth = $button.outerWidth();
-            var buttonHeight = $button.outerHeight();
-            
-            if (buttonWidth === 0 || buttonHeight === 0 || $button.css('display') === 'none' || $button.css('visibility') === 'hidden') {
-                // Button is hidden, try alternative placement
-                console.log('Edit button visibility issue detected for', $element);
+            try {
+                // Skip if debugging is off
+                if (!wpfe_data.debug_mode) {
+                    return;
+                }
                 
-                // Remove existing button
-                $button.remove();
+                // Check if button is visible (has width and height)
+                var buttonWidth = $button.outerWidth();
+                var buttonHeight = $button.outerHeight();
                 
-                // Create a new button with different placement strategy
-                var newButton = $('<button>')
-                    .addClass('wpfe-edit-button wpfe-button-alternative')
-                    .attr('data-wpfe-field', $element.data('wpfe-field'))
-                    .attr('data-wpfe-post-id', $element.data('wpfe-post-id'))
-                    .attr('aria-label', wpfe_data.i18n.edit)
-                    .attr('title', wpfe_data.i18n.edit)
-                    .html('<span class="dashicons dashicons-edit"></span>');
-                
-                // Try absolute positioning at the top-right of the viewport
-                $('body').append(newButton);
-                
-                // Position relative to the element
-                var elementOffset = $element.offset();
-                newButton.css({
-                    'position': 'absolute',
-                    'top': Math.max(elementOffset.top, 10) + 'px',
-                    'right': '10px',
-                    'z-index': '999999'
-                });
-                
-                // Store reference to the original element
-                newButton.data('wpfe-target-element', $element);
-                
-                // Add click handler
-                newButton.on('click', function(e) {
-                    e.preventDefault();
-                    var targetElement = $(this).data('wpfe-target-element');
-                    var fieldName = targetElement.data('wpfe-field');
-                    var postId = targetElement.data('wpfe-post-id');
+                if (buttonWidth === 0 || buttonHeight === 0 || 
+                    $button.css('display') === 'none' || 
+                    $button.css('visibility') === 'hidden') {
                     
-                    if (window.wpfe) {
-                        window.wpfe.openEditor(fieldName, postId, $(this));
+                    // Button is hidden, try alternative placement
+                    console.log('Edit button visibility issue detected for', $element);
+                    
+                    // Check if element has valid data
+                    var fieldName = $element.data('wpfe-field');
+                    var postId = $element.data('wpfe-post-id');
+                    
+                    if (!fieldName || !postId) {
+                        return;
                     }
-                });
+                    
+                    // Remove existing button
+                    $button.remove();
+                    
+                    // Create a new button with different placement strategy
+                    var newButton = $('<button>')
+                        .addClass('wpfe-edit-button wpfe-button-alternative')
+                        .attr('data-wpfe-field', fieldName)
+                        .attr('data-wpfe-post-id', postId)
+                        .attr('aria-label', wpfe_data.i18n.edit)
+                        .attr('title', wpfe_data.i18n.edit)
+                        .html('<span class="dashicons dashicons-edit"></span>');
+                    
+                    // Try absolute positioning at the top-right of the viewport
+                    $('body').append(newButton);
+                    
+                    // Position relative to the element (with error handling)
+                    var elementOffset = $element.offset() || { top: 0, left: 0 };
+                    newButton.css({
+                        'position': 'absolute',
+                        'top': Math.max(elementOffset.top, 10) + 'px',
+                        'right': '10px',
+                        'z-index': '999999'
+                    });
+                    
+                    // Store reference to the original element
+                    newButton.data('wpfe-target-element', $element);
+                    
+                    // Add click handler
+                    var self = this;
+                    newButton.on('click', function(e) {
+                        e.preventDefault();
+                        var targetElement = $(this).data('wpfe-target-element');
+                        
+                        if (!targetElement || !targetElement.length) {
+                            return;
+                        }
+                        
+                        var fieldName = targetElement.data('wpfe-field');
+                        var postId = targetElement.data('wpfe-post-id');
+                        
+                        if (fieldName && postId) {
+                            self.openEditor(fieldName, postId, $(this));
+                        }
+                    });
+                }
+            } catch (e) {
+                if (wpfe_data.debug_mode) {
+                    console.warn('Error verifying button visibility:', e);
+                }
             }
         },
         
@@ -736,41 +807,53 @@
          * @param {jQuery} $button The button to check
          */
         ensureButtonVisibility: function($button) {
-            // Check if button is partially out of viewport
-            var buttonRect = $button[0].getBoundingClientRect();
-            var windowWidth = window.innerWidth || document.documentElement.clientWidth;
-            var windowHeight = window.innerHeight || document.documentElement.clientHeight;
+            // Safety check to prevent errors
+            if (!$button || !$button.length || !$button[0]) {
+                return;
+            }
             
-            var isPartiallyHidden = 
-                buttonRect.left < 0 ||
-                buttonRect.right > windowWidth ||
-                buttonRect.top < 0 ||
-                buttonRect.bottom > windowHeight;
+            try {
+                // Check if button is partially out of viewport
+                var buttonRect = $button[0].getBoundingClientRect();
+                var windowWidth = window.innerWidth || document.documentElement.clientWidth;
+                var windowHeight = window.innerHeight || document.documentElement.clientHeight;
                 
-            if (isPartiallyHidden) {
-                // Adjust button position to ensure visibility
-                if (buttonRect.left < 0) {
-                    $button.css('left', '0');
-                    $button.css('right', 'auto');
+                var isPartiallyHidden = 
+                    buttonRect.left < 0 ||
+                    buttonRect.right > windowWidth ||
+                    buttonRect.top < 0 ||
+                    buttonRect.bottom > windowHeight;
+                    
+                if (isPartiallyHidden) {
+                    // Adjust button position to ensure visibility
+                    if (buttonRect.left < 0) {
+                        $button.css('left', '0');
+                        $button.css('right', 'auto');
+                    }
+                    
+                    if (buttonRect.right > windowWidth) {
+                        $button.css('right', '0');
+                        $button.css('left', 'auto');
+                    }
+                    
+                    if (buttonRect.top < 0) {
+                        $button.css('top', '0');
+                        $button.css('bottom', 'auto');
+                    }
+                    
+                    if (buttonRect.bottom > windowHeight) {
+                        $button.css('bottom', '0');
+                        $button.css('top', 'auto');
+                    }
+                    
+                    // Add a class to indicate adjustment was made
+                    $button.addClass('wpfe-button-adjusted');
                 }
-                
-                if (buttonRect.right > windowWidth) {
-                    $button.css('right', '0');
-                    $button.css('left', 'auto');
+            } catch (e) {
+                // Log error in debug mode
+                if (wpfe_data.debug_mode) {
+                    console.warn('Error ensuring button visibility:', e);
                 }
-                
-                if (buttonRect.top < 0) {
-                    $button.css('top', '0');
-                    $button.css('bottom', 'auto');
-                }
-                
-                if (buttonRect.bottom > windowHeight) {
-                    $button.css('bottom', '0');
-                    $button.css('top', 'auto');
-                }
-                
-                // Add a class to indicate adjustment was made
-                $button.addClass('wpfe-button-adjusted');
             }
         },
 
