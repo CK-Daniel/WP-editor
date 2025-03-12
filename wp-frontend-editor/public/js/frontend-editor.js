@@ -29,7 +29,6 @@
             // Cache DOM elements
             this.sidebar = $('#wpfe-editor-sidebar');
             this.overlay = $('#wpfe-editor-overlay');
-            this.editButtons = $('.wpfe-edit-button');
             
             // Load templates
             this.loadTemplates();
@@ -37,7 +36,22 @@
             // Initialize event listeners
             this.initEvents();
             
-            console.log('WP Frontend Editor initialized');
+            // Initialize editable elements
+            this.initEditableElements();
+            
+            // Add highlight class if enabled in settings
+            if (wpfe_data.highlight_editable) {
+                $('body').addClass('wpfe-highlight-editable');
+            }
+            
+            // Apply custom width to sidebar if set
+            if (wpfe_data.sidebar_width && parseInt(wpfe_data.sidebar_width) > 0) {
+                this.sidebar.css('width', parseInt(wpfe_data.sidebar_width) + 'px');
+            }
+            
+            if (wpfe_data.debug_mode) {
+                console.log('WP Frontend Editor initialized', wpfe_data);
+            }
         },
 
         /**
@@ -53,6 +67,105 @@
             };
         },
 
+        /**
+         * Initialize editable elements.
+         */
+        initEditableElements: function() {
+            var self = this;
+            
+            // Check for editable elements with core WordPress fields
+            var coreFields = [
+                { name: 'post_title', selector: '.entry-title, .post-title, h1.title, h2.title' },
+                { name: 'post_content', selector: '.entry-content, .post-content, .content' },
+                { name: 'post_excerpt', selector: '.entry-summary, .excerpt, .post-excerpt' }
+            ];
+            
+            // Process each core field
+            $.each(coreFields, function(index, field) {
+                var elements = $(field.selector);
+                
+                if (elements.length) {
+                    elements.each(function() {
+                        var $element = $(this);
+                        var postId = wpfe_data.post_id;
+                        
+                        // Don't apply to elements that already have the editable class
+                        if (!$element.hasClass('wpfe-editable')) {
+                            // Add editable class and data attributes
+                            $element.addClass('wpfe-editable')
+                                .attr('data-wpfe-field', field.name)
+                                .attr('data-wpfe-post-id', postId);
+                            
+                            // Create edit button
+                            self.addEditButton($element, field.name, postId);
+                        }
+                    });
+                }
+            });
+            
+            // Cache all edit buttons after initialization
+            this.editButtons = $('.wpfe-edit-button');
+        },
+        
+        /**
+         * Add edit button to an element.
+         * 
+         * @param {jQuery} $element The element to add button to.
+         * @param {string} fieldName The field name.
+         * @param {number} postId The post ID.
+         */
+        addEditButton: function($element, fieldName, postId) {
+            var buttonContent = '';
+            var positionClass = 'wpfe-button-' + (wpfe_data.button_position || 'top-right');
+            
+            // Button content based on style
+            if (wpfe_data.button_style === 'icon-text') {
+                buttonContent = '<span class="dashicons dashicons-edit"></span><span class="wpfe-button-text">' + wpfe_data.i18n.edit + '</span>';
+            } else if (wpfe_data.button_style === 'text-only') {
+                buttonContent = '<span class="wpfe-button-text">' + wpfe_data.i18n.edit + '</span>';
+            } else {
+                buttonContent = '<span class="dashicons dashicons-edit"></span>';
+            }
+            
+            // Create button element
+            var $button = $('<button>')
+                .addClass('wpfe-edit-button ' + positionClass)
+                .attr('data-wpfe-field', fieldName)
+                .attr('data-wpfe-post-id', postId)
+                .attr('aria-label', wpfe_data.i18n.edit)
+                .html(buttonContent);
+            
+            // Add button to the element
+            $element.append($button);
+        },
+
+        /**
+         * Throttle function to limit how often a function can be called
+         * @param {Function} func The function to throttle
+         * @param {number} limit The time limit in ms
+         * @returns {Function} Throttled function
+         */
+        throttle: function(func, limit) {
+            var lastFunc;
+            var lastRan;
+            return function() {
+                var context = this;
+                var args = arguments;
+                if (!lastRan) {
+                    func.apply(context, args);
+                    lastRan = Date.now();
+                } else {
+                    clearTimeout(lastFunc);
+                    lastFunc = setTimeout(function() {
+                        if ((Date.now() - lastRan) >= limit) {
+                            func.apply(context, args);
+                            lastRan = Date.now();
+                        }
+                    }, limit - (Date.now() - lastRan));
+                }
+            };
+        },
+        
         /**
          * Initialize event listeners.
          */
@@ -113,16 +226,16 @@
                     self.closeEditor();
                 }
                 
-                // Enter key in fields
-                if (e.keyCode === 13 && e.ctrlKey && self.isEditing) {
+                // Ctrl+Enter or Cmd+Enter to save
+                if ((e.ctrlKey || e.metaKey) && e.keyCode === 13 && self.isEditing) {
                     self.saveChanges();
                 }
             });
 
-            // Support for inline editing
+            // Support for inline editing if enabled
             if (wpfe_data.enable_inline) {
                 $(document).on('click', '.wpfe-editable', function(e) {
-                    if (self.isEditing || $(e.target).hasClass('wpfe-edit-button')) {
+                    if (self.isEditing || $(e.target).hasClass('wpfe-edit-button') || $(e.target).closest('.wpfe-edit-button').length) {
                         return;
                     }
                     
@@ -149,34 +262,40 @@
                 return;
             }
             
+            if (wpfe_data.debug_mode) {
+                console.log('ACF Fields to initialize:', fields);
+            }
+            
             // Process each field
             $.each(fields, function(index, field) {
                 var selector = field.selector;
-                var $element = $(selector);
+                var $elements = $(selector);
                 
-                if ($element.length) {
-                    // Add editable class
-                    $element.addClass('wpfe-editable');
-                    
-                    // Add data attributes
-                    $element.attr({
-                        'data-wpfe-field': field.key,
-                        'data-wpfe-post-id': field.post_id
+                if (wpfe_data.debug_mode) {
+                    console.log('Looking for elements with selector:', selector, 'Found:', $elements.length);
+                }
+                
+                if ($elements.length) {
+                    $elements.each(function() {
+                        var $element = $(this);
+                        
+                        // Don't apply to elements that already have the editable class
+                        if (!$element.hasClass('wpfe-editable')) {
+                            // Add editable class and data attributes
+                            $element.addClass('wpfe-editable')
+                                .attr('data-wpfe-field', field.key)
+                                .attr('data-wpfe-post-id', field.post_id)
+                                .attr('data-wpfe-field-type', 'acf');
+                            
+                            // Create and add edit button
+                            self.addEditButton($element, field.key, field.post_id);
+                        }
                     });
-                    
-                    // Create edit button
-                    var $button = $(wpfe_data.edit_icon).addClass('wpfe-edit-button').attr({
-                        'data-wpfe-field': field.key,
-                        'data-wpfe-post-id': field.post_id,
-                        'data-wpfe-field-type': 'acf'
-                    });
-                    
-                    // Add button if it doesn't already exist
-                    if (!$element.find('.wpfe-edit-button').length) {
-                        $element.append($button);
-                    }
                 }
             });
+            
+            // Update edit buttons cache
+            this.editButtons = $('.wpfe-edit-button');
         },
 
         /**
@@ -198,7 +317,17 @@
             this.sidebar.find('.wpfe-editor-sidebar-fields').empty();
             this.sidebar.find('.wpfe-editor-sidebar-loading').show();
             this.sidebar.find('.wpfe-editor-message').empty().removeClass('success error');
-            this.sidebar.find('.wpfe-editor-field-name').text(fieldName);
+            
+            // Set field name in header
+            var fieldLabel = fieldName;
+            if ($button && $button.length) {
+                // Try to get a more user-friendly name from the parent element
+                var $parent = $button.closest('.wpfe-editable');
+                if ($parent.length && $parent.data('wpfe-field-label')) {
+                    fieldLabel = $parent.data('wpfe-field-label');
+                }
+            }
+            this.sidebar.find('.wpfe-editor-field-name').text(fieldLabel);
             
             // Show sidebar and overlay
             this.sidebar.show();
@@ -226,6 +355,14 @@
             setTimeout(function() {
                 self.sidebar.hide();
                 self.overlay.hide();
+                
+                // Clean up WP Editor if it was initialized
+                if (typeof wp !== 'undefined' && wp.editor && wp.editor.remove) {
+                    $('.wpfe-editor-wysiwyg').each(function() {
+                        wp.editor.remove($(this).attr('id'));
+                    });
+                }
+                
                 self.isEditing = false;
                 self.activeField = null;
                 self.activePostId = null;
@@ -258,11 +395,11 @@
                         self.fields = response.data;
                         self.renderFields();
                     } else {
-                        self.showError(response.data.message || 'Error fetching field data');
+                        self.showError(response.data.message || wpfe_data.i18n.error);
                     }
                 },
                 error: function() {
-                    self.showError('AJAX request failed');
+                    self.showError(wpfe_data.i18n.error);
                 }
             });
         },
@@ -342,7 +479,7 @@
                     
                 default:
                     // For unsupported field types
-                    fieldInput = '<p>' + wpfe_data.i18n.unsupported_field + '</p>';
+                    fieldInput = '<p>' + (wpfe_data.i18n.unsupported_field || 'This field type is not supported yet.') + '</p>';
                     break;
             }
             
@@ -363,6 +500,12 @@
             if (typeof wp !== 'undefined' && wp.editor && wp.editor.initialize) {
                 $('.wpfe-editor-wysiwyg').each(function() {
                     var id = $(this).attr('id');
+                    var self = this;
+                    
+                    // Check if editor already exists to avoid duplicate initialization
+                    if (window.tinymce && window.tinymce.get(id)) {
+                        return;
+                    }
                     
                     wp.editor.initialize(id, {
                         tinymce: {
@@ -370,9 +513,41 @@
                             plugins: 'charmap colorpicker hr lists paste tabfocus textcolor fullscreen wordpress wpautoresize wpeditimage wpemoji wpgallery wplink wptextpattern',
                             toolbar1: 'formatselect bold italic bullist numlist blockquote alignleft aligncenter alignright link unlink wp_more fullscreen',
                             toolbar2: '',
-                            height: 200
+                            height: 200,
+                            setup: function(editor) {
+                                // Update field value on content change
+                                editor.on('change', function() {
+                                    // Sync the editor content to the textarea
+                                    editor.save();
+                                    
+                                    // If live preview is enabled, update the preview
+                                    if (wpfe_data.live_preview) {
+                                        var content = editor.getContent();
+                                        var fieldName = $('#' + id).closest('.wpfe-editor-field').data('field-name');
+                                        var $element = $('[data-wpfe-field="' + fieldName + '"]');
+                                        
+                                        if ($element.length) {
+                                            // Update the content in the page
+                                            $element.contents().not('.wpfe-edit-button').remove();
+                                            // Use the correct rendering for content
+                                            $element.prepend(content);
+                                        }
+                                    }
+                                });
+                            }
                         },
-                        quicktags: true
+                        quicktags: {
+                            buttons: 'strong,em,link,block,del,ins,img,ul,ol,li,code,close'
+                        },
+                        mediaButtons: true
+                    });
+                });
+            } else {
+                // Fallback for environments where wp.editor is not available
+                $('.wpfe-editor-wysiwyg').each(function() {
+                    $(this).css({
+                        'width': '100%',
+                        'min-height': '200px'
                     });
                 });
             }
@@ -489,6 +664,8 @@
                             $element.contents().not('.wpfe-edit-button').remove();
                             $element.prepend(value);
                         }
+                        // Also update page title
+                        document.title = value + ' - ' + document.title.split(' - ').pop();
                         break;
                         
                     case 'post_content':
@@ -508,9 +685,40 @@
                         break;
                         
                     case 'featured_image':
-                        // Refresh the page to show updated featured image
+                        // Update featured image without page reload
                         if (value) {
-                            location.reload();
+                            // Find featured image elements - common selectors across themes
+                            var $featuredImg = $('.post-thumbnail img, .wp-post-image, .attachment-post-thumbnail, article img.attachment-thumbnail');
+                            if ($featuredImg.length) {
+                                // Get the image data via AJAX
+                                $.ajax({
+                                    url: wpfe_data.ajax_url,
+                                    method: 'GET',
+                                    data: {
+                                        action: 'wpfe_get_image_data',
+                                        nonce: wpfe_data.nonce,
+                                        attachment_id: value
+                                    },
+                                    success: function(response) {
+                                        if (response.success && response.data.url) {
+                                            // Update all featured image instances
+                                            $featuredImg.each(function() {
+                                                $(this).attr('src', response.data.url);
+                                                // Also update srcset if it exists
+                                                if (response.data.srcset) {
+                                                    $(this).attr('srcset', response.data.srcset);
+                                                }
+                                            });
+                                        }
+                                    }
+                                });
+                            } else {
+                                // If we can't find the featured image element, fall back to reload
+                                location.reload();
+                            }
+                        } else {
+                            // Image was removed, try to remove it from DOM
+                            $('.post-thumbnail img, .wp-post-image, .attachment-post-thumbnail').remove();
                         }
                         break;
                         
@@ -520,9 +728,69 @@
                         if ($element.length) {
                             var fieldType = self.fields[fieldName] ? self.fields[fieldName].type : '';
                             
-                            if (fieldType === 'image') {
-                                // Image fields require a page reload
-                                location.reload();
+                            if (fieldType === 'repeater' || fieldType === 'flexible_content') {
+                                // For complex fields, try AJAX refresh first
+                                $.ajax({
+                                    url: wpfe_data.ajax_url,
+                                    method: 'GET',
+                                    data: {
+                                        action: 'wpfe_get_rendered_field',
+                                        nonce: wpfe_data.nonce,
+                                        post_id: self.activePostId,
+                                        field_name: fieldName
+                                    },
+                                    success: function(response) {
+                                        if (response.success && response.data.html) {
+                                            // Replace the old content with the new rendered content
+                                            $element.contents().not('.wpfe-edit-button').remove();
+                                            $element.prepend(response.data.html);
+                                        } else {
+                                            // Fallback to reload if AJAX refresh fails
+                                            location.reload();
+                                        }
+                                    },
+                                    error: function() {
+                                        // Fallback to reload if AJAX fails
+                                        location.reload();
+                                    }
+                                });
+                            } else if (fieldType === 'image' || fieldType === 'gallery') {
+                                // For image fields, try to update the src
+                                var $imgs = $element.find('img');
+                                if ($imgs.length && typeof value === 'object' && value.url) {
+                                    // Update image src
+                                    $imgs.attr('src', value.url);
+                                    if (value.srcset) {
+                                        $imgs.attr('srcset', value.srcset);
+                                    }
+                                } else if ($imgs.length && typeof value === 'number') {
+                                    // Get image data and update
+                                    $.ajax({
+                                        url: wpfe_data.ajax_url,
+                                        method: 'GET',
+                                        data: {
+                                            action: 'wpfe_get_image_data',
+                                            nonce: wpfe_data.nonce,
+                                            attachment_id: value
+                                        },
+                                        success: function(response) {
+                                            if (response.success && response.data.url) {
+                                                $imgs.attr('src', response.data.url);
+                                                if (response.data.srcset) {
+                                                    $imgs.attr('srcset', response.data.srcset);
+                                                }
+                                            } else {
+                                                location.reload();
+                                            }
+                                        },
+                                        error: function() {
+                                            location.reload();
+                                        }
+                                    });
+                                } else {
+                                    // Can't update, reload
+                                    location.reload();
+                                }
                             } else {
                                 // Text-based fields
                                 $element.contents().not('.wpfe-edit-button').remove();
@@ -545,13 +813,13 @@
             // Create the media frame if it doesn't exist
             if (!this.mediaFrame) {
                 this.mediaFrame = wp.media({
-                    title: wpfe_data.i18n.select_image,
+                    title: wpfe_data.i18n.select_image || 'Select Image',
                     multiple: false,
                     library: {
                         type: 'image'
                     },
                     button: {
-                        text: wpfe_data.i18n.select
+                        text: wpfe_data.i18n.select || 'Select'
                     }
                 });
                 

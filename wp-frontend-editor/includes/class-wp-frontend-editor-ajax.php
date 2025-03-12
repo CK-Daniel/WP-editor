@@ -22,6 +22,8 @@ class WP_Frontend_Editor_AJAX {
         // Register AJAX actions
         add_action( 'wp_ajax_wpfe_get_fields', array( $this, 'get_fields' ) );
         add_action( 'wp_ajax_wpfe_save_fields', array( $this, 'save_fields' ) );
+        add_action( 'wp_ajax_wpfe_get_image_data', array( $this, 'get_image_data' ) );
+        add_action( 'wp_ajax_wpfe_get_rendered_field', array( $this, 'get_rendered_field' ) );
         
         // Register REST API routes
         add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
@@ -31,6 +33,12 @@ class WP_Frontend_Editor_AJAX {
      * Register REST API routes.
      */
     public function register_rest_routes() {
+        // Check if REST API is available (some hosts might disable it)
+        if ( ! function_exists( 'register_rest_route' ) ) {
+            return;
+        }
+        
+        // Register the get-fields route with fallback for non-pretty permalinks
         register_rest_route(
             'wp-frontend-editor/v1',
             '/get-fields',
@@ -53,6 +61,7 @@ class WP_Frontend_Editor_AJAX {
             )
         );
 
+        // Register the save-fields route with improved security measures
         register_rest_route(
             'wp-frontend-editor/v1',
             '/save-fields',
@@ -64,12 +73,68 @@ class WP_Frontend_Editor_AJAX {
                     'post_id' => array(
                         'validate_callback' => function( $param ) {
                             return is_numeric( $param );
-                        }
+                        },
+                        'sanitize_callback' => 'absint',
+                        'required' => true,
                     ),
                     'fields' => array(
                         'validate_callback' => function( $param ) {
                             return is_array( $param );
+                        },
+                        'required' => true,
+                    ),
+                    'nonce' => array(
+                        'required' => true,
+                        'validate_callback' => function( $param ) {
+                            return is_string( $param ) && ! empty( $param );
                         }
+                    )
+                ),
+            )
+        );
+        
+        // Register a route for getting image data
+        register_rest_route(
+            'wp-frontend-editor/v1',
+            '/get-image-data',
+            array(
+                'methods'             => 'GET',
+                'callback'            => array( $this, 'rest_get_image_data' ),
+                'permission_callback' => array( $this, 'rest_permissions_check' ),
+                'args'                => array(
+                    'attachment_id' => array(
+                        'validate_callback' => function( $param ) {
+                            return is_numeric( $param );
+                        },
+                        'sanitize_callback' => 'absint',
+                        'required' => true,
+                    ),
+                ),
+            )
+        );
+        
+        // Register a route for getting rendered fields
+        register_rest_route(
+            'wp-frontend-editor/v1',
+            '/get-rendered-field',
+            array(
+                'methods'             => 'GET',
+                'callback'            => array( $this, 'rest_get_rendered_field' ),
+                'permission_callback' => array( $this, 'rest_permissions_check' ),
+                'args'                => array(
+                    'post_id' => array(
+                        'validate_callback' => function( $param ) {
+                            return is_numeric( $param );
+                        },
+                        'sanitize_callback' => 'absint',
+                        'required' => true,
+                    ),
+                    'field_name' => array(
+                        'validate_callback' => function( $param ) {
+                            return is_string( $param ) && ! empty( $param );
+                        },
+                        'sanitize_callback' => 'sanitize_text_field',
+                        'required' => true,
                     ),
                 ),
             )
@@ -130,6 +195,16 @@ class WP_Frontend_Editor_AJAX {
      * @return WP_REST_Response The response object.
      */
     public function rest_save_fields( $request ) {
+        // Additional nonce verification for REST
+        $nonce = $request->get_param( 'nonce' );
+        if ( ! wp_verify_nonce( $nonce, 'wpfe-editor-nonce' ) ) {
+            return new WP_Error(
+                'rest_forbidden',
+                __( 'Security check failed', 'wp-frontend-editor' ),
+                array( 'status' => 403 )
+            );
+        }
+        
         $post_id = $request->get_param( 'post_id' );
         $fields = $request->get_param( 'fields' );
 
@@ -143,6 +218,179 @@ class WP_Frontend_Editor_AJAX {
             'success' => true,
             'message' => __( 'Fields saved successfully', 'wp-frontend-editor' ),
             'data'    => $result,
+        ) );
+    }
+    
+    /**
+     * Get rendered field via REST API.
+     *
+     * @param WP_REST_Request $request The request object.
+     * @return WP_REST_Response The response object.
+     */
+    public function rest_get_rendered_field( $request ) {
+        $post_id = $request->get_param( 'post_id' );
+        $field_name = $request->get_param( 'field_name' );
+        
+        // Buffer the output
+        ob_start();
+        
+        if ( function_exists( 'get_field' ) ) {
+            // For ACF fields
+            $field_object = get_field_object( $field_name, $post_id );
+            
+            if ( $field_object ) {
+                $value = get_field( $field_name, $post_id );
+                
+                // Handle different field types
+                switch ( $field_object['type'] ) {
+                    case 'repeater':
+                        if ( have_rows( $field_name, $post_id ) ) {
+                            echo '<div class="acf-repeater acf-repeater-' . esc_attr( $field_name ) . '">';
+                            while ( have_rows( $field_name, $post_id ) ) { 
+                                the_row();
+                                echo '<div class="acf-repeater-row">';
+                                
+                                // Output each sub field within the repeater
+                                foreach ( $field_object['sub_fields'] as $sub_field ) {
+                                    $sub_value = get_sub_field( $sub_field['name'] );
+                                    
+                                    echo '<div class="acf-field acf-field-' . esc_attr( $sub_field['name'] ) . '">';
+                                    
+                                    if ( $sub_field['type'] === 'image' ) {
+                                        // Special handling for images
+                                        if ( $sub_value ) {
+                                            echo wp_get_attachment_image( $sub_value, 'medium' );
+                                        }
+                                    } else {
+                                        // Regular field output
+                                        echo '<span class="acf-field-value">' . esc_html( is_array( $sub_value ) ? json_encode( $sub_value ) : $sub_value ) . '</span>';
+                                    }
+                                    
+                                    echo '</div>';
+                                }
+                                
+                                echo '</div>';
+                            }
+                            echo '</div>';
+                        }
+                        break;
+                        
+                    case 'flexible_content':
+                        if ( have_rows( $field_name, $post_id ) ) {
+                            echo '<div class="acf-flexible-content acf-flexible-' . esc_attr( $field_name ) . '">';
+                            while ( have_rows( $field_name, $post_id ) ) { 
+                                the_row();
+                                $layout = get_row_layout();
+                                
+                                echo '<div class="acf-layout acf-layout-' . esc_attr( $layout ) . '">';
+                                
+                                // Get sub fields for this layout
+                                $layout_fields = array();
+                                foreach ( $field_object['layouts'] as $layout_obj ) {
+                                    if ( $layout_obj['name'] === $layout ) {
+                                        $layout_fields = $layout_obj['sub_fields'];
+                                        break;
+                                    }
+                                }
+                                
+                                // Output each sub field within the layout
+                                foreach ( $layout_fields as $sub_field ) {
+                                    $sub_value = get_sub_field( $sub_field['name'] );
+                                    
+                                    echo '<div class="acf-field acf-field-' . esc_attr( $sub_field['name'] ) . '">';
+                                    
+                                    if ( $sub_field['type'] === 'image' ) {
+                                        // Special handling for images
+                                        if ( $sub_value ) {
+                                            echo wp_get_attachment_image( $sub_value, 'medium' );
+                                        }
+                                    } else {
+                                        // Regular field output
+                                        echo '<span class="acf-field-value">' . esc_html( is_array( $sub_value ) ? json_encode( $sub_value ) : $sub_value ) . '</span>';
+                                    }
+                                    
+                                    echo '</div>';
+                                }
+                                
+                                echo '</div>';
+                            }
+                            echo '</div>';
+                        }
+                        break;
+                        
+                    default:
+                        // For other field types, just output the value
+                        if ( is_array( $value ) ) {
+                            echo '<pre>' . esc_html( json_encode( $value, JSON_PRETTY_PRINT ) ) . '</pre>';
+                        } else {
+                            echo esc_html( $value );
+                        }
+                        break;
+                }
+            } else {
+                // Try to get it as a custom field
+                $value = get_post_meta( $post_id, $field_name, true );
+                echo esc_html( $value );
+            }
+        } else {
+            // Standard WP fields
+            $post = get_post( $post_id );
+            
+            switch ( $field_name ) {
+                case 'post_title':
+                    echo esc_html( $post->post_title );
+                    break;
+                    
+                case 'post_content':
+                    echo apply_filters( 'the_content', $post->post_content );
+                    break;
+                    
+                case 'post_excerpt':
+                    echo esc_html( $post->post_excerpt );
+                    break;
+                    
+                default:
+                    // Try as a custom field
+                    $value = get_post_meta( $post_id, $field_name, true );
+                    echo esc_html( $value );
+                    break;
+            }
+        }
+        
+        $output = ob_get_clean();
+        
+        return rest_ensure_response( array(
+            'success' => true,
+            'html' => $output,
+        ) );
+    }
+    
+    /**
+     * Get image data via REST API.
+     *
+     * @param WP_REST_Request $request The request object.
+     * @return WP_REST_Response The response object.
+     */
+    public function rest_get_image_data( $request ) {
+        $attachment_id = $request->get_param( 'attachment_id' );
+        
+        // Get image data
+        $full_image_url = wp_get_attachment_url( $attachment_id );
+        $large_image_data = wp_get_attachment_image_src( $attachment_id, 'large' );
+        $srcset = wp_get_attachment_image_srcset( $attachment_id, 'large' );
+        $sizes = wp_get_attachment_image_sizes( $attachment_id, 'large' );
+        
+        return rest_ensure_response( array(
+            'success' => true,
+            'data' => array(
+                'id'     => $attachment_id,
+                'url'    => $large_image_data ? $large_image_data[0] : $full_image_url,
+                'width'  => $large_image_data ? $large_image_data[1] : null,
+                'height' => $large_image_data ? $large_image_data[2] : null,
+                'full'   => $full_image_url,
+                'srcset' => $srcset,
+                'sizes'  => $sizes,
+            )
         ) );
     }
 
@@ -434,5 +682,208 @@ class WP_Frontend_Editor_AJAX {
         }
 
         return $updated_fields;
+    }
+    
+    /**
+     * Get image data for a specified attachment.
+     * 
+     * Used to update featured images without page reload.
+     */
+    public function get_image_data() {
+        // Check nonce
+        if ( ! check_ajax_referer( 'wpfe-editor-nonce', 'nonce', false ) ) {
+            wp_send_json_error( array(
+                'message' => __( 'Security check failed', 'wp-frontend-editor' ),
+            ) );
+        }
+        
+        // Get attachment ID
+        $attachment_id = isset( $_GET['attachment_id'] ) ? intval( $_GET['attachment_id'] ) : 0;
+        
+        if ( ! $attachment_id ) {
+            wp_send_json_error( array(
+                'message' => __( 'Invalid attachment ID', 'wp-frontend-editor' ),
+            ) );
+        }
+        
+        // Get image data
+        $full_image_url = wp_get_attachment_url( $attachment_id );
+        $large_image_data = wp_get_attachment_image_src( $attachment_id, 'large' );
+        $srcset = wp_get_attachment_image_srcset( $attachment_id, 'large' );
+        $sizes = wp_get_attachment_image_sizes( $attachment_id, 'large' );
+        
+        // Return image data
+        wp_send_json_success( array(
+            'id'     => $attachment_id,
+            'url'    => $large_image_data ? $large_image_data[0] : $full_image_url,
+            'width'  => $large_image_data ? $large_image_data[1] : null,
+            'height' => $large_image_data ? $large_image_data[2] : null,
+            'full'   => $full_image_url,
+            'srcset' => $srcset,
+            'sizes'  => $sizes,
+        ) );
+    }
+    
+    /**
+     * Get a rendered field.
+     * 
+     * Used to update complex fields (repeaters, flexible content) without page reload.
+     */
+    public function get_rendered_field() {
+        // Check nonce
+        if ( ! check_ajax_referer( 'wpfe-editor-nonce', 'nonce', false ) ) {
+            wp_send_json_error( array(
+                'message' => __( 'Security check failed', 'wp-frontend-editor' ),
+            ) );
+        }
+        
+        // Get parameters
+        $post_id = isset( $_GET['post_id'] ) ? intval( $_GET['post_id'] ) : 0;
+        $field_name = isset( $_GET['field_name'] ) ? sanitize_text_field( $_GET['field_name'] ) : '';
+        
+        if ( ! $post_id || ! $field_name ) {
+            wp_send_json_error( array(
+                'message' => __( 'Invalid parameters', 'wp-frontend-editor' ),
+            ) );
+        }
+        
+        // Check if user can edit this post
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            wp_send_json_error( array(
+                'message' => __( 'You do not have permission to edit this post', 'wp-frontend-editor' ),
+            ) );
+        }
+        
+        // Buffer the output
+        ob_start();
+        
+        if ( function_exists( 'get_field' ) ) {
+            // For ACF fields
+            $field_object = get_field_object( $field_name, $post_id );
+            
+            if ( $field_object ) {
+                $value = get_field( $field_name, $post_id );
+                
+                // Handle different field types
+                switch ( $field_object['type'] ) {
+                    case 'repeater':
+                        if ( have_rows( $field_name, $post_id ) ) {
+                            echo '<div class="acf-repeater acf-repeater-' . esc_attr( $field_name ) . '">';
+                            while ( have_rows( $field_name, $post_id ) ) { 
+                                the_row();
+                                echo '<div class="acf-repeater-row">';
+                                
+                                // Output each sub field within the repeater
+                                foreach ( $field_object['sub_fields'] as $sub_field ) {
+                                    $sub_value = get_sub_field( $sub_field['name'] );
+                                    
+                                    echo '<div class="acf-field acf-field-' . esc_attr( $sub_field['name'] ) . '">';
+                                    
+                                    if ( $sub_field['type'] === 'image' ) {
+                                        // Special handling for images
+                                        if ( $sub_value ) {
+                                            echo wp_get_attachment_image( $sub_value, 'medium' );
+                                        }
+                                    } else {
+                                        // Regular field output
+                                        echo '<span class="acf-field-value">' . esc_html( is_array( $sub_value ) ? json_encode( $sub_value ) : $sub_value ) . '</span>';
+                                    }
+                                    
+                                    echo '</div>';
+                                }
+                                
+                                echo '</div>';
+                            }
+                            echo '</div>';
+                        }
+                        break;
+                        
+                    case 'flexible_content':
+                        if ( have_rows( $field_name, $post_id ) ) {
+                            echo '<div class="acf-flexible-content acf-flexible-' . esc_attr( $field_name ) . '">';
+                            while ( have_rows( $field_name, $post_id ) ) { 
+                                the_row();
+                                $layout = get_row_layout();
+                                
+                                echo '<div class="acf-layout acf-layout-' . esc_attr( $layout ) . '">';
+                                
+                                // Get sub fields for this layout
+                                $layout_fields = array();
+                                foreach ( $field_object['layouts'] as $layout_obj ) {
+                                    if ( $layout_obj['name'] === $layout ) {
+                                        $layout_fields = $layout_obj['sub_fields'];
+                                        break;
+                                    }
+                                }
+                                
+                                // Output each sub field within the layout
+                                foreach ( $layout_fields as $sub_field ) {
+                                    $sub_value = get_sub_field( $sub_field['name'] );
+                                    
+                                    echo '<div class="acf-field acf-field-' . esc_attr( $sub_field['name'] ) . '">';
+                                    
+                                    if ( $sub_field['type'] === 'image' ) {
+                                        // Special handling for images
+                                        if ( $sub_value ) {
+                                            echo wp_get_attachment_image( $sub_value, 'medium' );
+                                        }
+                                    } else {
+                                        // Regular field output
+                                        echo '<span class="acf-field-value">' . esc_html( is_array( $sub_value ) ? json_encode( $sub_value ) : $sub_value ) . '</span>';
+                                    }
+                                    
+                                    echo '</div>';
+                                }
+                                
+                                echo '</div>';
+                            }
+                            echo '</div>';
+                        }
+                        break;
+                        
+                    default:
+                        // For other field types, just output the value
+                        if ( is_array( $value ) ) {
+                            echo '<pre>' . esc_html( json_encode( $value, JSON_PRETTY_PRINT ) ) . '</pre>';
+                        } else {
+                            echo esc_html( $value );
+                        }
+                        break;
+                }
+            } else {
+                // Try to get it as a custom field
+                $value = get_post_meta( $post_id, $field_name, true );
+                echo esc_html( $value );
+            }
+        } else {
+            // Standard WP fields
+            $post = get_post( $post_id );
+            
+            switch ( $field_name ) {
+                case 'post_title':
+                    echo esc_html( $post->post_title );
+                    break;
+                    
+                case 'post_content':
+                    echo apply_filters( 'the_content', $post->post_content );
+                    break;
+                    
+                case 'post_excerpt':
+                    echo esc_html( $post->post_excerpt );
+                    break;
+                    
+                default:
+                    // Try as a custom field
+                    $value = get_post_meta( $post_id, $field_name, true );
+                    echo esc_html( $value );
+                    break;
+            }
+        }
+        
+        $output = ob_get_clean();
+        
+        wp_send_json_success( array(
+            'html' => $output,
+        ) );
     }
 }

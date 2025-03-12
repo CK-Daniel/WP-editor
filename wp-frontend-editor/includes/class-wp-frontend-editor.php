@@ -44,11 +44,21 @@ class WP_Frontend_Editor {
     public $acf;
 
     /**
+     * Plugin options.
+     *
+     * @var array
+     */
+    private $options;
+
+    /**
      * Initialize the plugin.
      *
      * @return void
      */
     public function init() {
+        // Load plugin options
+        $this->options = $this->get_options();
+
         // Load required files
         $this->load_dependencies();
 
@@ -115,6 +125,12 @@ class WP_Frontend_Editor {
             return;
         }
 
+        // Check if this post type is enabled
+        $post_type = get_post_type();
+        if ( $post_type && ! in_array( $post_type, $this->options['post_types'], true ) ) {
+            return;
+        }
+
         // Enqueue the dashicons
         wp_enqueue_style( 'dashicons' );
 
@@ -138,23 +154,42 @@ class WP_Frontend_Editor {
             true
         );
 
+        // Apply custom CSS if defined
+        if ( ! empty( $this->options['custom_css'] ) ) {
+            wp_add_inline_style( 'wp-frontend-editor', $this->options['custom_css'] );
+        }
+
         // Pass data to JavaScript
         wp_localize_script(
             'wp-frontend-editor',
             'wpfe_data',
             array(
-                'ajax_url'   => admin_url( 'admin-ajax.php' ),
-                'nonce'      => wp_create_nonce( 'wpfe-editor-nonce' ),
-                'post_id'    => get_the_ID(),
-                'is_acf_active' => $this->is_acf_active(),
-                'edit_icon'  => '<span class="dashicons dashicons-edit"></span>',
-                'i18n'       => array(
-                    'edit'       => __( 'Edit', 'wp-frontend-editor' ),
-                    'save'       => __( 'Save', 'wp-frontend-editor' ),
-                    'cancel'     => __( 'Cancel', 'wp-frontend-editor' ),
-                    'saving'     => __( 'Saving...', 'wp-frontend-editor' ),
-                    'success'    => __( 'Changes saved successfully', 'wp-frontend-editor' ),
-                    'error'      => __( 'Error saving changes', 'wp-frontend-editor' ),
+                'ajax_url'          => admin_url( 'admin-ajax.php' ),
+                'rest_api_url'      => rest_url( 'wp-frontend-editor/v1' ),
+                'nonce'             => wp_create_nonce( 'wpfe-editor-nonce' ),
+                'rest_nonce'        => wp_create_nonce( 'wp_rest' ),
+                'post_id'           => get_the_ID(),
+                'is_acf_active'     => $this->is_acf_active(),
+                'enable_inline'     => isset( $this->options['enable_inline'] ) ? (bool) $this->options['enable_inline'] : true,
+                'button_position'   => isset( $this->options['button_position'] ) ? $this->options['button_position'] : 'top-right',
+                'button_style'      => isset( $this->options['button_style'] ) ? $this->options['button_style'] : 'icon-only',
+                'sidebar_width'     => isset( $this->options['sidebar_width'] ) ? $this->options['sidebar_width'] : 350,
+                'highlight_editable' => isset( $this->options['highlight_editable'] ) ? (bool) $this->options['highlight_editable'] : false,
+                'debug_mode'        => isset( $this->options['debug_mode'] ) ? (bool) $this->options['debug_mode'] : false,
+                'auto_save_inline'  => isset( $this->options['auto_save_inline'] ) ? (bool) $this->options['auto_save_inline'] : false,
+                'live_preview'      => isset( $this->options['live_preview'] ) ? (bool) $this->options['live_preview'] : true,
+                'show_toolbar'      => isset( $this->options['show_toolbar'] ) ? (bool) $this->options['show_toolbar'] : false,
+                'i18n'              => array(
+                    'edit'            => __( 'Edit', 'wp-frontend-editor' ),
+                    'save'            => __( 'Save', 'wp-frontend-editor' ),
+                    'cancel'          => __( 'Cancel', 'wp-frontend-editor' ),
+                    'saving'          => __( 'Saving...', 'wp-frontend-editor' ),
+                    'success'         => __( 'Changes saved successfully', 'wp-frontend-editor' ),
+                    'error'           => __( 'Error saving changes', 'wp-frontend-editor' ),
+                    'select_image'    => __( 'Select Image', 'wp-frontend-editor' ),
+                    'select'          => __( 'Select', 'wp-frontend-editor' ),
+                    'remove'          => __( 'Remove', 'wp-frontend-editor' ),
+                    'unsupported_field' => __( 'This field type is not supported yet.', 'wp-frontend-editor' ),
                 ),
             )
         );
@@ -168,6 +203,12 @@ class WP_Frontend_Editor {
     public function add_editor_container() {
         // Only add for users who can edit
         if ( ! $this->current_user_can_edit() ) {
+            return;
+        }
+
+        // Check if this post type is enabled
+        $post_type = get_post_type();
+        if ( $post_type && ! in_array( $post_type, $this->options['post_types'], true ) ) {
             return;
         }
         
@@ -193,11 +234,22 @@ class WP_Frontend_Editor {
             return $title;
         }
 
+        // Check if post type is enabled
+        $post_type = get_post_type( $post_id );
+        if ( $post_type && ! in_array( $post_type, $this->options['post_types'], true ) ) {
+            return $title;
+        }
+
+        // Check if this field is enabled
+        if ( ! in_array( 'title', $this->options['core_fields'], true ) ) {
+            return $title;
+        }
+
         // Get the edit button HTML
-        $edit_button = $this->get_edit_button_html( 'title', $post_id );
+        $edit_button = $this->get_edit_button_html( 'post_title', $post_id );
 
         // Return the title with an edit button wrapper
-        return '<span class="wpfe-editable wpfe-title" data-wpfe-field="post_title" data-wpfe-post-id="' . esc_attr( $post_id ) . '">' 
+        return '<span class="wpfe-editable wpfe-title" data-wpfe-field="post_title" data-wpfe-post-id="' . esc_attr( $post_id ) . '" data-wpfe-field-label="' . esc_attr__( 'Title', 'wp-frontend-editor' ) . '">' 
                . $title . $edit_button . '</span>';
     }
 
@@ -215,12 +267,23 @@ class WP_Frontend_Editor {
 
         // Get the post ID
         $post_id = get_the_ID();
+        
+        // Check if post type is enabled
+        $post_type = get_post_type( $post_id );
+        if ( $post_type && ! in_array( $post_type, $this->options['post_types'], true ) ) {
+            return $content;
+        }
+
+        // Check if this field is enabled
+        if ( ! in_array( 'content', $this->options['core_fields'], true ) ) {
+            return $content;
+        }
 
         // Get the edit button HTML
-        $edit_button = $this->get_edit_button_html( 'content', $post_id );
+        $edit_button = $this->get_edit_button_html( 'post_content', $post_id );
 
         // Return the content with an edit button wrapper
-        return '<div class="wpfe-editable wpfe-content" data-wpfe-field="post_content" data-wpfe-post-id="' . esc_attr( $post_id ) . '">' 
+        return '<div class="wpfe-editable wpfe-content" data-wpfe-field="post_content" data-wpfe-post-id="' . esc_attr( $post_id ) . '" data-wpfe-field-label="' . esc_attr__( 'Content', 'wp-frontend-editor' ) . '">' 
                . $content . $edit_button . '</div>';
     }
 
@@ -238,12 +301,23 @@ class WP_Frontend_Editor {
 
         // Get the post ID
         $post_id = get_the_ID();
+        
+        // Check if post type is enabled
+        $post_type = get_post_type( $post_id );
+        if ( $post_type && ! in_array( $post_type, $this->options['post_types'], true ) ) {
+            return $excerpt;
+        }
+
+        // Check if this field is enabled
+        if ( ! in_array( 'excerpt', $this->options['core_fields'], true ) ) {
+            return $excerpt;
+        }
 
         // Get the edit button HTML
-        $edit_button = $this->get_edit_button_html( 'excerpt', $post_id );
+        $edit_button = $this->get_edit_button_html( 'post_excerpt', $post_id );
 
         // Return the excerpt with an edit button wrapper
-        return '<div class="wpfe-editable wpfe-excerpt" data-wpfe-field="post_excerpt" data-wpfe-post-id="' . esc_attr( $post_id ) . '">' 
+        return '<div class="wpfe-editable wpfe-excerpt" data-wpfe-field="post_excerpt" data-wpfe-post-id="' . esc_attr( $post_id ) . '" data-wpfe-field-label="' . esc_attr__( 'Excerpt', 'wp-frontend-editor' ) . '">' 
                . $excerpt . $edit_button . '</div>';
     }
 
@@ -255,8 +329,24 @@ class WP_Frontend_Editor {
      * @return string The edit button HTML.
      */
     private function get_edit_button_html( $field_type, $post_id ) {
-        return '<button class="wpfe-edit-button" data-wpfe-field="' . esc_attr( $field_type ) . '" data-wpfe-post-id="' . esc_attr( $post_id ) . '">
-            <span class="dashicons dashicons-edit"></span>
+        $button_position = $this->options['button_position'] ?? 'top-right';
+        $button_style = $this->options['button_style'] ?? 'icon-only';
+        
+        // Position class
+        $position_class = 'wpfe-button-' . $button_position;
+        
+        // Button content based on style
+        $button_content = '';
+        if ( 'icon-only' === $button_style ) {
+            $button_content = '<span class="dashicons dashicons-edit"></span>';
+        } elseif ( 'text-only' === $button_style ) {
+            $button_content = '<span class="wpfe-button-text">' . esc_html__( 'Edit', 'wp-frontend-editor' ) . '</span>';
+        } else { // icon-text
+            $button_content = '<span class="dashicons dashicons-edit"></span><span class="wpfe-button-text">' . esc_html__( 'Edit', 'wp-frontend-editor' ) . '</span>';
+        }
+
+        return '<button class="wpfe-edit-button ' . esc_attr( $position_class ) . '" data-wpfe-field="' . esc_attr( $field_type ) . '" data-wpfe-post-id="' . esc_attr( $post_id ) . '">
+            ' . $button_content . '
             <span class="screen-reader-text">' . esc_html__( 'Edit', 'wp-frontend-editor' ) . '</span>
         </button>';
     }
@@ -270,6 +360,15 @@ class WP_Frontend_Editor {
     public function current_user_can_edit( $post_id = 0 ) {
         if ( ! is_user_logged_in() ) {
             return false;
+        }
+
+        // Check if user has the required capabilities
+        $user_caps = isset( $this->options['user_caps'] ) ? $this->options['user_caps'] : array( 'edit_posts' );
+        
+        foreach ( $user_caps as $cap ) {
+            if ( ! current_user_can( $cap ) ) {
+                return false;
+            }
         }
 
         if ( ! $post_id ) {
@@ -290,6 +389,31 @@ class WP_Frontend_Editor {
      */
     public function is_acf_active() {
         return class_exists( 'ACF' );
+    }
+
+    /**
+     * Get plugin options.
+     *
+     * @return array The plugin options.
+     */
+    public function get_options() {
+        $defaults = array(
+            'enable_inline'      => 1,
+            'sidebar_width'      => 350,
+            'button_position'    => 'top-right',
+            'button_style'       => 'icon-only',
+            'highlight_editable' => 0,
+            'post_types'         => array( 'post', 'page' ),
+            'core_fields'        => array( 'title', 'content', 'excerpt', 'featured_image' ),
+            'acf_fields'         => array(),
+            'user_roles'         => array( 'administrator', 'editor' ),
+            'user_caps'          => array( 'edit_posts' ),
+            'auto_enable_acf'    => 1,
+        );
+
+        $options = get_option( 'wpfe_options', $defaults );
+
+        return wp_parse_args( $options, $defaults );
     }
 
     /**
