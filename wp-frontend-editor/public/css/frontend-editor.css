@@ -1,5 +1,7 @@
 /**
  * Frontend Editor Styles
+ * 
+ * Updated with ACF field type specific styling to match WordPress backend
  */
 
 :root {
@@ -990,6 +992,333 @@ textarea.wpfe-editor-input {
     opacity: 0.9 !important;
 }
 
+/* ACF Complex Field Styling */
+/* These styles match the WordPress admin backend style for ACF fields */
+
+/* Common field styling */
+.wpfe-field {
+    margin-bottom: 20px !important;
+    background-color: var(--wpfe-white) !important;
+    border-radius: 3px !important;
+    overflow: hidden !important;
+}
+
+.acf-field-label {
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
+    color: var(--wpfe-gray-800) !important;
+    font-size: 14px !important;
+}
+
+.acf-field-value-wrap {
+    padding: 8px 0 !important;
+}
+
+.acf-empty-value {
+    color: var(--wpfe-gray-500) !important;
+    font-style: italic !important;
+    padding: 5px 0 !important;
+    display: inline-block !important;
+}
+
+/* Color picker field */
+.acf-color-indicator {
+    display: inline-block !important;
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 50% !important;
+    border: 1px solid var(--wpfe-gray-300) !important;
+    vertical-align: middle !important;
+    margin-right: 5px !important;
+}
+
+/* Gallery field */
+.acf-gallery-display {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin-top: 10px !important;
+}
+
+.acf-gallery-item {
+    border: 1px solid var(--wpfe-border) !important;
+    padding: 3px !important;
+    background-color: var(--wpfe-white) !important;
+    box-shadow: 0 1px 2px var(--wpfe-shadow-light) !important;
+    border-radius: 3px !important;
+    width: calc(33.333% - 6px) !important;
+    max-width: 150px !important;
+}
+
+.acf-gallery-item img {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    border-radius: 2px !important;
+}
+
+/* File field */
+.acf-file-item {
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 8px 12px !important;
+    background-color: var(--wpfe-gray-100) !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+    color: var(--wpfe-primary) !important;
+    text-decoration: none !important;
+    font-size: 13px !important;
+}
+
+.acf-file-item:hover {
+    background-color: var(--wpfe-gray-200) !important;
+}
+
+.acf-file-item::before {
+    content: "\f318" !important; /* WordPress dashicons file icon */
+    font-family: dashicons !important;
+    margin-right: 6px !important;
+    font-size: 16px !important;
+}
+
+/* Link field */
+.acf-link {
+    display: inline-flex !important;
+    align-items: center !important;
+    color: var(--wpfe-primary) !important;
+    text-decoration: none !important;
+}
+
+.acf-link::before {
+    content: "\f504" !important; /* WordPress dashicons link icon */
+    font-family: dashicons !important;
+    margin-right: 4px !important;
+    font-size: 16px !important;
+}
+
+.acf-link:hover {
+    text-decoration: underline !important;
+}
+
+/* Map field */
+.acf-map-display {
+    padding: 10px !important;
+    background-color: var(--wpfe-gray-100) !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+    margin-top: 5px !important;
+}
+
+.acf-map-address {
+    display: block !important;
+    font-weight: 600 !important;
+    margin-bottom: 5px !important;
+}
+
+.acf-map-coords {
+    color: var(--wpfe-gray-600) !important;
+    font-size: 12px !important;
+}
+
+/* Repeater field */
+.acf-repeater {
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+    overflow: hidden !important;
+    margin-bottom: 20px !important;
+}
+
+.acf-repeater-header {
+    display: flex !important;
+    background-color: var(--wpfe-gray-100) !important;
+    border-bottom: 1px solid var(--wpfe-border) !important;
+    padding: 8px 12px !important;
+}
+
+.acf-repeater-header-label {
+    flex: 1 !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    padding: 5px !important;
+    color: var(--wpfe-gray-700) !important;
+}
+
+.acf-repeater-row {
+    display: flex !important;
+    border-bottom: 1px solid var(--wpfe-border) !important;
+    background-color: var(--wpfe-white) !important;
+    padding: 8px 12px !important;
+}
+
+.acf-repeater-row:last-child {
+    border-bottom: none !important;
+}
+
+.acf-repeater-row:nth-child(even) {
+    background-color: var(--wpfe-gray-100) !important;
+}
+
+.acf-repeater-row .acf-field {
+    flex: 1 !important;
+    padding: 5px !important;
+    min-width: 0 !important; /* For text overflow */
+}
+
+.acf-empty-repeater {
+    padding: 15px !important;
+    text-align: center !important;
+    color: var(--wpfe-gray-500) !important;
+    background-color: var(--wpfe-gray-100) !important;
+    font-style: italic !important;
+}
+
+/* Flexible content field */
+.acf-flexible-content {
+    margin-bottom: 20px !important;
+}
+
+.acf-layout {
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+    margin-bottom: 15px !important;
+    background-color: var(--wpfe-white) !important;
+    overflow: hidden !important;
+}
+
+.acf-layout-label {
+    background-color: var(--wpfe-gray-100) !important;
+    padding: 10px 12px !important;
+    font-weight: 600 !important;
+    border-bottom: 1px solid var(--wpfe-border) !important;
+    color: var(--wpfe-gray-800) !important;
+}
+
+.acf-layout .acf-field {
+    padding: 12px !important;
+    border-bottom: 1px solid var(--wpfe-border) !important;
+}
+
+.acf-layout .acf-field:last-child {
+    border-bottom: none !important;
+}
+
+.acf-empty-flexible {
+    padding: 15px !important;
+    text-align: center !important;
+    color: var(--wpfe-gray-500) !important;
+    background-color: var(--wpfe-gray-100) !important;
+    font-style: italic !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+}
+
+/* Group field */
+.acf-group {
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+    padding: 10px !important;
+    background-color: var(--wpfe-white) !important;
+    margin-bottom: 20px !important;
+}
+
+.acf-group .acf-field {
+    padding: 10px !important;
+    border-bottom: 1px solid var(--wpfe-border) !important;
+}
+
+.acf-group .acf-field:last-child {
+    border-bottom: none !important;
+}
+
+/* Clone field */
+.acf-clone-field {
+    background-color: var(--wpfe-gray-100) !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+    padding: 10px !important;
+    margin-bottom: 15px !important;
+}
+
+/* UI fields */
+.acf-ui-field {
+    padding: 10px !important;
+    margin-bottom: 15px !important;
+}
+
+.acf-message {
+    padding: 12px !important;
+    background-color: var(--wpfe-info-light) !important;
+    border-left: 4px solid var(--wpfe-info) !important;
+    margin-bottom: 15px !important;
+}
+
+.acf-ui-label {
+    font-weight: 600 !important;
+    color: var(--wpfe-gray-600) !important;
+    border-bottom: 1px solid var(--wpfe-border) !important;
+    padding-bottom: 5px !important;
+    margin-bottom: 10px !important;
+}
+
+/* JSON data display */
+.acf-json-data {
+    background-color: var(--wpfe-gray-100) !important;
+    padding: 10px !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+    font-family: monospace !important;
+    font-size: 12px !important;
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+    max-height: 200px !important;
+    overflow-y: auto !important;
+}
+
+/* Field type specific styling */
+.acf-field-type-wysiwyg .acf-field-value-wrap {
+    padding: 0 !important;
+}
+
+.acf-field-type-textarea .acf-field-value-wrap {
+    white-space: pre-line !important;
+}
+
+.acf-field-type-image img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    border: 1px solid var(--wpfe-border) !important;
+    padding: 3px !important;
+    background-color: var(--wpfe-white) !important;
+}
+
+/* Responsive adjustments for complex fields */
+@media screen and (max-width: 782px) {
+    .acf-repeater-row {
+        flex-direction: column !important;
+    }
+    
+    .acf-repeater-header {
+        display: none !important;
+    }
+    
+    .acf-repeater-row .acf-field {
+        width: 100% !important;
+        padding: 8px 5px !important;
+    }
+    
+    .acf-gallery-item {
+        width: calc(50% - 6px) !important;
+    }
+    
+    .acf-field-label {
+        font-size: 13px !important;
+        border-bottom: 1px solid var(--wpfe-gray-200) !important;
+        padding-bottom: 5px !important;
+        margin-bottom: 8px !important;
+    }
+}
+
 /* WordPress Native Field Styling */
 .wpfe-editor-wp-title-field .wpfe-editor-title-input {
     font-size: 1.7em !important;
@@ -1842,6 +2171,168 @@ textarea.wpfe-editor-input {
     
     .wpfe-editor-sidebar-content {
         max-height: calc(85vh - 140px);
+    }
+}
+
+/* ==========================================================================
+   Field Controls
+   ========================================================================== */
+
+/* Spinner animation */
+@keyframes wpfe-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.wpfe-spin {
+    animation: wpfe-spin 1s infinite linear !important;
+    display: inline-block !important;
+}
+
+/* Field controls layout */
+.wpfe-field-controls {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-top: 16px !important;
+    padding-top: 12px !important;
+    border-top: 1px solid var(--wpfe-gray-200) !important;
+}
+
+/* Save button */
+.wpfe-field-save {
+    background-color: var(--wpfe-primary) !important;
+    color: var(--wpfe-white) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    border: none !important;
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 100px !important;
+    transition: background-color 0.2s ease !important;
+}
+
+.wpfe-field-save:hover {
+    background-color: var(--wpfe-primary-dark) !important;
+}
+
+.wpfe-field-save .dashicons {
+    margin-right: 4px !important;
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+}
+
+.wpfe-field-save.is-saving {
+    background-color: var(--wpfe-gray-600) !important;
+    cursor: wait !important;
+}
+
+/* Auto-save toggle */
+.wpfe-field-autosave-wrapper {
+    display: flex !important;
+    align-items: center !important;
+}
+
+.wpfe-field-autosave-toggle {
+    display: flex !important;
+    align-items: center !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    color: var(--wpfe-gray-700) !important;
+}
+
+.wpfe-field-autosave-toggle input {
+    margin-right: 5px !important;
+}
+
+/* Field status messages */
+.wpfe-field-message {
+    margin-top: 10px !important;
+    padding: 6px 10px !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    font-size: 13px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.wpfe-field-success-message {
+    background-color: var(--wpfe-success-light) !important;
+    color: var(--wpfe-success) !important;
+}
+
+.wpfe-field-error-message {
+    background-color: var(--wpfe-error-light) !important;
+    color: var(--wpfe-error) !important;
+}
+
+.wpfe-field-message .dashicons {
+    margin-right: 5px !important;
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+}
+
+/* Field state indicators */
+.wpfe-field-success {
+    position: relative !important;
+}
+
+.wpfe-field-error {
+    position: relative !important;
+}
+
+/* Error field styles */
+.wpfe-editor-error-field {
+    border: 1px solid var(--wpfe-error) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+    padding: 16px !important;
+    background-color: var(--wpfe-error-light) !important;
+}
+
+.wpfe-error-message {
+    color: var(--wpfe-error) !important;
+    margin-bottom: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.wpfe-error-message .dashicons {
+    margin-right: 6px !important;
+}
+
+.wpfe-error-input {
+    width: 100% !important;
+    padding: 8px !important;
+    border: 1px solid var(--wpfe-gray-300) !important;
+    border-radius: var(--wpfe-border-radius) !important;
+}
+
+/* Mobile adjustments for field controls */
+@media screen and (max-width: 767px) {
+    .wpfe-field-controls {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    .wpfe-field-save {
+        width: 100% !important;
+        margin-bottom: 10px !important;
+        min-height: var(--wpfe-touch-target-size) !important;
+    }
+    
+    .wpfe-field-autosave-toggle {
+        min-height: 30px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    
+    .wpfe-field-autosave-toggle input[type="checkbox"] {
+        width: 20px !important;
+        height: 20px !important;
     }
 }
 

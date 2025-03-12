@@ -1766,6 +1766,259 @@
                 }
             });
         },
+        
+        /**
+         * Get auto-save preference from localStorage
+         * @returns {boolean} Whether auto-save is enabled
+         */
+        getAutoSavePreference: function() {
+            try {
+                var savedPreference = localStorage.getItem('wpfe_autosave_enabled');
+                return savedPreference === 'true';
+            } catch (e) {
+                return false; // Default to false if localStorage is not available
+            }
+        },
+        
+        /**
+         * Save auto-save preference to localStorage
+         * @param {boolean} enabled Whether auto-save is enabled
+         */
+        saveAutoSavePreference: function(enabled) {
+            try {
+                localStorage.setItem('wpfe_autosave_enabled', enabled ? 'true' : 'false');
+            } catch (e) {
+                console.warn('Could not save auto-save preference');
+            }
+        },
+        
+        /**
+         * Create field controls (per-field save button and auto-save toggle)
+         * @param {string} fieldName The field name
+         * @param {jQuery} $field The field jQuery element
+         */
+        addFieldControls: function(fieldName, $field) {
+            var self = this;
+            var autoSaveEnabled = this.getAutoSavePreference();
+            
+            // Create controls wrapper
+            var $controls = $('<div class="wpfe-field-controls"></div>');
+            
+            // Create save button
+            var $saveButton = $('<button type="button" class="wpfe-field-save" data-field="' + fieldName + '">' +
+                                '<span class="dashicons dashicons-saved"></span> ' + wpfe_data.i18n.save +
+                                '</button>');
+            
+            // Create auto-save toggle
+            var $autoSaveWrapper = $('<div class="wpfe-field-autosave-wrapper"></div>');
+            var $autoSaveToggle = $('<label class="wpfe-field-autosave-toggle">' +
+                                    '<input type="checkbox" class="wpfe-field-autosave" ' + 
+                                    (autoSaveEnabled ? 'checked' : '') + '> ' +
+                                    '<span>' + wpfe_data.i18n.auto_save + '</span>' +
+                                    '</label>');
+            
+            $autoSaveWrapper.append($autoSaveToggle);
+            $controls.append($saveButton, $autoSaveWrapper);
+            
+            // Add controls to field
+            $field.append($controls);
+            
+            // Add event handlers
+            $saveButton.on('click', function() {
+                var fieldName = $(this).data('field');
+                self.saveFieldChange(fieldName);
+            });
+            
+            $autoSaveToggle.find('input').on('change', function() {
+                var isEnabled = $(this).prop('checked');
+                self.saveAutoSavePreference(isEnabled);
+                
+                // Update all other auto-save toggles to maintain consistency
+                $('.wpfe-field-autosave').not(this).prop('checked', isEnabled);
+            });
+            
+            return $field;
+        },
+        
+        /**
+         * Save a single field change
+         * @param {string} fieldName The field name to save
+         */
+        saveFieldChange: function(fieldName) {
+            var self = this;
+            var fieldValue = this.getFieldValue(fieldName);
+            
+            // Create a temporary object with just this field
+            var fieldData = {};
+            fieldData[fieldName] = fieldValue;
+            
+            // Show saving indicator on the field
+            this.showFieldSaving(fieldName);
+            
+            $.ajax({
+                url: wpfe_data.ajax_url,
+                method: 'POST',
+                data: {
+                    action: 'wpfe_save_fields',
+                    nonce: wpfe_data.nonce,
+                    post_id: this.activePostId,
+                    fields: JSON.stringify(fieldData)
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Update the original value
+                        self.originalValues[fieldName] = fieldValue;
+                        
+                        // Show success message on the field
+                        self.showFieldSuccess(fieldName);
+                        
+                        // Trigger preview update for the field
+                        self.previewContentChange(fieldName, fieldValue);
+                        
+                        // Add to edit history
+                        self.trackFieldEdit(fieldName, fieldValue);
+                    } else {
+                        // Show error message on the field
+                        self.showFieldError(fieldName, response.data.message || wpfe_data.i18n.error);
+                    }
+                },
+                error: function() {
+                    // Show error message on the field
+                    self.showFieldError(fieldName, wpfe_data.i18n.error);
+                }
+            });
+        },
+        
+        /**
+         * Show saving indicator on a field
+         * @param {string} fieldName The field name
+         */
+        showFieldSaving: function(fieldName) {
+            var $field = this.sidebar.find('.wpfe-editor-field[data-field-name="' + fieldName + '"]');
+            var $saveButton = $field.find('.wpfe-field-save');
+            
+            // Add saving state
+            $saveButton.addClass('is-saving')
+                       .html('<span class="dashicons dashicons-update wpfe-spin"></span> ' + wpfe_data.i18n.saving);
+                       
+            // Remove any existing status
+            $field.removeClass('wpfe-field-success wpfe-field-error')
+                  .find('.wpfe-field-message').remove();
+        },
+        
+        /**
+         * Show success message on a field
+         * @param {string} fieldName The field name
+         */
+        showFieldSuccess: function(fieldName) {
+            var $field = this.sidebar.find('.wpfe-editor-field[data-field-name="' + fieldName + '"]');
+            var $saveButton = $field.find('.wpfe-field-save');
+            
+            // Remove saving state
+            $saveButton.removeClass('is-saving')
+                       .html('<span class="dashicons dashicons-saved"></span> ' + wpfe_data.i18n.save);
+            
+            // Show success status
+            $field.addClass('wpfe-field-success')
+                  .find('.wpfe-field-message').remove();
+                  
+            $field.append('<div class="wpfe-field-message wpfe-field-success-message">' + 
+                          '<span class="dashicons dashicons-yes"></span> ' + 
+                          wpfe_data.i18n.saved + 
+                          '</div>');
+                          
+            // Fade out status after 2 seconds
+            setTimeout(function() {
+                $field.find('.wpfe-field-message').fadeOut(500, function() {
+                    $(this).remove();
+                    $field.removeClass('wpfe-field-success');
+                });
+            }, 2000);
+        },
+        
+        /**
+         * Show error message on a field
+         * @param {string} fieldName The field name
+         * @param {string} message The error message
+         */
+        showFieldError: function(fieldName, message) {
+            var $field = this.sidebar.find('.wpfe-editor-field[data-field-name="' + fieldName + '"]');
+            var $saveButton = $field.find('.wpfe-field-save');
+            
+            // Remove saving state
+            $saveButton.removeClass('is-saving')
+                       .html('<span class="dashicons dashicons-saved"></span> ' + wpfe_data.i18n.save);
+            
+            // Show error status
+            $field.addClass('wpfe-field-error')
+                  .find('.wpfe-field-message').remove();
+                  
+            $field.append('<div class="wpfe-field-message wpfe-field-error-message">' + 
+                          '<span class="dashicons dashicons-warning"></span> ' + 
+                          message + 
+                          '</div>');
+                          
+            // Fade out error after 5 seconds
+            setTimeout(function() {
+                $field.find('.wpfe-field-message').fadeOut(500, function() {
+                    $(this).remove();
+                    $field.removeClass('wpfe-field-error');
+                });
+            }, 5000);
+        },
+        
+        /**
+         * Get the current value of a field from the editor
+         * @param {string} fieldName The field name
+         * @returns {string} The field value
+         */
+        getFieldValue: function(fieldName) {
+            var $field = this.sidebar.find('.wpfe-editor-field[data-field-name="' + fieldName + '"]');
+            var fieldType = $field.data('field-type');
+            var value = '';
+            
+            // Handle different field types
+            if (fieldType === 'wp-content' || fieldType === 'acf-wysiwyg') {
+                // For TinyMCE fields, get the value from the editor instance
+                var editorId = 'wpfe-field-' + fieldName;
+                if (typeof tinyMCE !== 'undefined' && tinyMCE.get(editorId)) {
+                    value = tinyMCE.get(editorId).getContent();
+                } else {
+                    // Fallback to textarea
+                    value = $('#' + editorId).val();
+                }
+            } else if (fieldType === 'wp-featured-image' || fieldType === 'acf-image') {
+                // For image fields, get the value from the hidden input
+                value = $field.find('input[type="hidden"]').val();
+            } else if (fieldType === 'acf-gallery') {
+                // For gallery fields, value is in the hidden input as a JSON string
+                value = $field.find('input[type="hidden"]').val();
+                // Convert the array of IDs to a proper array
+                try {
+                    value = JSON.parse(value);
+                } catch (e) {
+                    value = [];
+                }
+            } else if (fieldType === 'acf-checkbox' || fieldType === 'acf-select' && $field.find('select[multiple]').length) {
+                // For multi-select or checkbox fields, get selected values
+                var values = [];
+                $field.find('input:checked, option:selected').each(function() {
+                    values.push($(this).val());
+                });
+                value = values;
+            } else {
+                // For standard input fields
+                var $input = $field.find('input[type="text"], input[type="number"], textarea, select').not('[type="hidden"]');
+                if ($input.length) {
+                    value = $input.val();
+                } else {
+                    // Fallback to hidden input
+                    value = $field.find('input[type="hidden"]').val();
+                }
+            }
+            
+            return value;
+        },
 
         /**
          * Render fields in the sidebar.
@@ -1774,8 +2027,13 @@
             var self = this;
             var $fieldsContainer = this.sidebar.find('.wpfe-editor-sidebar-fields');
             
-            // Hide loading
-            this.sidebar.find('.wpfe-editor-sidebar-loading').hide();
+            // Hide loading with a fade out effect to ensure it's properly hidden
+            this.sidebar.find('.wpfe-editor-sidebar-loading').fadeOut(300);
+            
+            // Make sure loading is really hidden after a delay (backup)
+            setTimeout(function() {
+                self.sidebar.find('.wpfe-editor-sidebar-loading').css('display', 'none');
+            }, 400);
             
             // Clear fields container
             $fieldsContainer.empty();
@@ -1882,6 +2140,7 @@
          * @returns {jQuery} The field element
          */
         renderWpTitleField: function(fieldName, fieldData) {
+            var self = this;
             var html = '<div class="wpfe-editor-field wpfe-editor-wp-title-field" data-field-name="' + fieldName + '" data-field-type="wp-title">' +
                        '<label for="wpfe-field-' + fieldName + '" class="wpfe-editor-field-label">' + (fieldData.label || 'Title') + '</label>' +
                        '<div class="wpfe-editor-field-input">' +
@@ -1890,7 +2149,24 @@
                        '</div>' +
                        '</div>';
             
-            return $(html);
+            var $field = $(html);
+            
+            // Add field controls (save button & auto-save toggle)
+            this.addFieldControls(fieldName, $field);
+            
+            // Setup auto-save functionality
+            $field.find('input').on('input', function() {
+                // Check if auto-save is enabled
+                if (self.getAutoSavePreference()) {
+                    // Debounce to avoid too many saves
+                    clearTimeout($(this).data('autosave-timer'));
+                    $(this).data('autosave-timer', setTimeout(function() {
+                        self.saveFieldChange(fieldName);
+                    }, 1500)); // 1.5 second delay
+                }
+            });
+            
+            return $field;
         },
         
         /**
@@ -1901,6 +2177,7 @@
          * @returns {jQuery} The field element
          */
         renderWpContentField: function(fieldName, fieldData) {
+            var self = this;
             var editorId = 'wpfe-field-' + fieldName;
             
             var html = '<div class="wpfe-editor-field wpfe-editor-wp-content-field" data-field-name="' + fieldName + '" data-field-type="wp-content">' +
@@ -1912,6 +2189,9 @@
                        '</div>';
             
             var $field = $(html);
+            
+            // Add field controls (save button & auto-save toggle)
+            this.addFieldControls(fieldName, $field);
             
             // Initialize the WordPress editor after the field is added to DOM
             var self = this;
@@ -1969,6 +2249,15 @@
                                     if (wpfe_data.live_preview) {
                                         self.previewContentChange(fieldName, editor.getContent());
                                     }
+                                    
+                                    // Auto-save functionality
+                                    if (self.getAutoSavePreference()) {
+                                        // Debounce to avoid too many saves
+                                        clearTimeout($field.data('autosave-timer'));
+                                        $field.data('autosave-timer', setTimeout(function() {
+                                            self.saveFieldChange(fieldName);
+                                        }, 2000)); // 2 second delay for rich text
+                                    }
                                 });
                             }
                         },
@@ -1991,6 +2280,7 @@
          * @returns {jQuery} The field element
          */
         renderWpExcerptField: function(fieldName, fieldData) {
+            var self = this;
             var html = '<div class="wpfe-editor-field wpfe-editor-wp-excerpt-field" data-field-name="' + fieldName + '" data-field-type="wp-excerpt">' +
                        '<label for="wpfe-field-' + fieldName + '" class="wpfe-editor-field-label">' + (fieldData.label || 'Excerpt') + '</label>' +
                        '<div class="wpfe-editor-field-input">' +
@@ -2000,7 +2290,24 @@
                        '</div>' +
                        '</div>';
             
-            return $(html);
+            var $field = $(html);
+            
+            // Add field controls (save button & auto-save toggle)
+            this.addFieldControls(fieldName, $field);
+            
+            // Setup auto-save functionality
+            $field.find('textarea').on('input', function() {
+                // Check if auto-save is enabled
+                if (self.getAutoSavePreference()) {
+                    // Debounce to avoid too many saves
+                    clearTimeout($(this).data('autosave-timer'));
+                    $(this).data('autosave-timer', setTimeout(function() {
+                        self.saveFieldChange(fieldName);
+                    }, 1500)); // 1.5 second delay
+                }
+            });
+            
+            return $field;
         },
         
         /**
@@ -2011,6 +2318,7 @@
          * @returns {jQuery} The field element
          */
         renderWpFeaturedImageField: function(fieldName, fieldData) {
+            var self = this;
             var hasImage = fieldData.value && fieldData.url;
             
             var html = '<div class="wpfe-editor-field wpfe-editor-wp-featured-image-field" data-field-name="' + fieldName + '" data-field-type="wp-featured-image">' +
@@ -2038,9 +2346,21 @@
             
             var $field = $(html);
             
+            // Add field controls (save button & auto-save toggle)
+            this.addFieldControls(fieldName, $field);
+            
             // Add event handlers
             $field.find('.wpfe-featured-image-select').on('click', function() {
                 self.openMediaLibrary(fieldName);
+                
+                // Auto-save when image is selected
+                if (self.getAutoSavePreference()) {
+                    $(window).one('wpfe-media-selected', function() {
+                        setTimeout(function() {
+                            self.saveFieldChange(fieldName);
+                        }, 500);
+                    });
+                }
             });
             
             $field.find('.wpfe-featured-image-remove').on('click', function() {
@@ -2057,6 +2377,13 @@
                 $field.find('.wpfe-featured-image-select').on('click', function() {
                     self.openMediaLibrary(fieldName);
                 });
+                
+                // Auto-save when image is removed
+                if (self.getAutoSavePreference()) {
+                    setTimeout(function() {
+                        self.saveFieldChange(fieldName);
+                    }, 500);
+                }
             });
             
             return $field;
@@ -2073,28 +2400,45 @@
             var self = this;
             var html = '';
             
-            // Create a wrapper with ACF styling
-            html = '<div class="wpfe-editor-field wpfe-editor-acf-field wpfe-acf-field-' + fieldData.type + '" ' + 
-                  'data-field-name="' + fieldName + '" data-field-type="acf-' + fieldData.type + '">';
-            
-            // Field label in ACF style
-            html += '<div class="wpfe-acf-field-label">' +
-                   '<label for="wpfe-field-' + fieldName + '">' + (fieldData.label || fieldName) + '</label>';
-            
-            // Add required indicator if field is required
-            if (fieldData.required) {
-                html += '<span class="wpfe-acf-required">*</span>';
+            // Debug information for troubleshooting
+            if (wpfe_data.debug_mode) {
+                console.log('Rendering ACF field:', fieldName, fieldData);
             }
             
-            html += '</div>';
-            
-            // Field instructions if available
-            if (fieldData.instructions) {
-                html += '<div class="wpfe-acf-field-instructions">' + fieldData.instructions + '</div>';
+            // Make sure we have valid data
+            if (!fieldData || typeof fieldData !== 'object') {
+                console.error('Invalid field data for ACF field:', fieldName);
+                return $('<div class="wpfe-editor-field wpfe-editor-error-field">Error: Invalid field data</div>');
             }
             
-            // Start field input wrapper
-            html += '<div class="wpfe-acf-field-input">';
+            if (!fieldData.type) {
+                console.error('Missing field type for ACF field:', fieldName);
+                return $('<div class="wpfe-editor-field wpfe-editor-error-field">Error: Missing field type</div>');
+            }
+            
+            try {
+                // Create a wrapper with ACF styling
+                html = '<div class="wpfe-editor-field wpfe-editor-acf-field wpfe-acf-field-' + fieldData.type + '" ' + 
+                      'data-field-name="' + fieldName + '" data-field-type="acf-' + fieldData.type + '">';
+                
+                // Field label in ACF style
+                html += '<div class="wpfe-acf-field-label">' +
+                       '<label for="wpfe-field-' + fieldName + '">' + (fieldData.label || fieldName) + '</label>';
+                
+                // Add required indicator if field is required
+                if (fieldData.required) {
+                    html += '<span class="wpfe-acf-required">*</span>';
+                }
+                
+                html += '</div>';
+                
+                // Field instructions if available
+                if (fieldData.instructions) {
+                    html += '<div class="wpfe-acf-field-instructions">' + fieldData.instructions + '</div>';
+                }
+                
+                // Start field input wrapper
+                html += '<div class="wpfe-acf-field-input">';
             
             // Generate appropriate input based on ACF field type
             switch (fieldData.type) {
@@ -2316,10 +2660,41 @@
             
             var $field = $(html);
             
+            // Add field controls (save button & auto-save toggle)
+            this.addFieldControls(fieldName, $field);
+            
             // Add event handlers for ACF fields
             this.addAcfFieldEventHandlers($field, fieldName, fieldData);
             
             return $field;
+            } catch (error) {
+                // Log the error and return a fallback element
+                console.error('Error rendering ACF field:', fieldName, error);
+                
+                // Create a fallback field that still shows something to the user
+                var errorHtml = '<div class="wpfe-editor-field wpfe-editor-error-field" data-field-name="' + fieldName + '">' +
+                               '<div class="wpfe-error-message">' +
+                               '<span class="dashicons dashicons-warning"></span> ' +
+                               'Error rendering field: ' + (fieldData.label || fieldName) +
+                               '</div>';
+                
+                // Add a simple input as fallback if possible
+                if (fieldData.value !== undefined) {
+                    errorHtml += '<div class="wpfe-editor-field-input">' +
+                               '<input type="text" id="wpfe-field-' + fieldName + '" name="' + fieldName + '" value="' + 
+                               this.escapeHtml(fieldData.value || '') + '" class="wpfe-error-input">' +
+                               '</div>';
+                }
+                
+                errorHtml += '</div>';
+                
+                var $errorField = $(errorHtml);
+                
+                // Add field controls
+                this.addFieldControls(fieldName, $errorField);
+                
+                return $errorField;
+            }
         },
         
         /**
@@ -2332,43 +2707,114 @@
         addAcfFieldEventHandlers: function($field, fieldName, fieldData) {
             var self = this;
             
-            switch (fieldData.type) {
-                case 'image':
-                    $field.find('.wpfe-acf-image-select').on('click', function(e) {
-                        e.preventDefault();
-                        self.openMediaLibrary(fieldName);
-                    });
-                    
-                    $field.find('.wpfe-acf-image-remove').on('click', function(e) {
-                        e.preventDefault();
-                        self.removeImage(fieldName);
+            try {
+                // Add auto-save handlers by field type
+                switch (fieldData.type) {
+                    case 'text':
+                    case 'textarea':
+                    case 'email':
+                    case 'url':
+                    case 'password':
+                    case 'number':
+                    case 'range':
+                        // For basic text inputs and textareas
+                        $field.find('input, textarea').on('input', function() {
+                            if (self.getAutoSavePreference()) {
+                                clearTimeout($(this).data('autosave-timer'));
+                                $(this).data('autosave-timer', setTimeout(function() {
+                                    self.saveFieldChange(fieldName);
+                                }, 1500));
+                            }
+                        });
+                        break;
                         
-                        // Update the UI
-                        var $wrap = $field.find('.wpfe-acf-image-wrap');
-                        $wrap.find('.wpfe-acf-image-preview').remove();
-                        $wrap.prepend('<div class="wpfe-acf-image-placeholder"><div class="wpfe-acf-image-placeholder-inner"><i class="acf-icon -picture"></i></div></div>');
+                    case 'select':
+                    case 'checkbox':
+                    case 'radio':
+                    case 'true_false':
+                        // For select, checkboxes and radio buttons
+                        $field.find('select, input[type="checkbox"], input[type="radio"]').on('change', function() {
+                            if (self.getAutoSavePreference()) {
+                                self.saveFieldChange(fieldName);
+                            }
+                        });
+                        break;
                         
-                        // Update button text
-                        $wrap.find('.wpfe-acf-image-select').text('Add Image');
-                        $wrap.find('.wpfe-acf-image-remove').remove();
-                    });
-                    break;
-                    
-                case 'gallery':
-                    $field.find('.wpfe-acf-gallery-add').on('click', function(e) {
-                        e.preventDefault();
-                        self.openGalleryMedia(fieldName);
-                    });
-                    
-                    $field.on('click', '.wpfe-acf-gallery-item-remove', function(e) {
-                        e.preventDefault();
-                        var $item = $(this).closest('.wpfe-acf-gallery-item');
-                        $item.remove();
-                        self.updateGalleryValues($field);
-                    });
-                    break;
-                    
-                case 'checkbox':
+                    case 'wysiwyg':
+                        // WYSIWYG fields are handled in their initialization
+                        break;
+                }
+                
+                // Add specific field type handlers
+                switch (fieldData.type) {
+                    case 'image':
+                        $field.find('.wpfe-acf-image-select').on('click', function(e) {
+                            e.preventDefault();
+                            self.openMediaLibrary(fieldName);
+                            
+                            // Auto-save when image is selected
+                            if (self.getAutoSavePreference()) {
+                                $(window).one('wpfe-media-selected', function() {
+                                    setTimeout(function() {
+                                        self.saveFieldChange(fieldName);
+                                    }, 500);
+                                });
+                            }
+                        });
+                        
+                        $field.find('.wpfe-acf-image-remove').on('click', function(e) {
+                            e.preventDefault();
+                            self.removeImage(fieldName);
+                            
+                            // Update the UI
+                            var $wrap = $field.find('.wpfe-acf-image-wrap');
+                            $wrap.find('.wpfe-acf-image-preview').remove();
+                            $wrap.prepend('<div class="wpfe-acf-image-placeholder"><div class="wpfe-acf-image-placeholder-inner"><i class="acf-icon -picture"></i></div></div>');
+                            
+                            // Update button text
+                            $wrap.find('.wpfe-acf-image-select').text('Add Image');
+                            $wrap.find('.wpfe-acf-image-remove').remove();
+                            
+                            // Auto-save when image is removed
+                            if (self.getAutoSavePreference()) {
+                                setTimeout(function() {
+                                    self.saveFieldChange(fieldName);
+                                }, 500);
+                            }
+                        });
+                        break;
+                        
+                    case 'gallery':
+                        $field.find('.wpfe-acf-gallery-add').on('click', function(e) {
+                            e.preventDefault();
+                            self.openGalleryMedia(fieldName);
+                            
+                            // Auto-save when gallery is updated
+                            if (self.getAutoSavePreference()) {
+                                $(window).one('wpfe-gallery-updated', function() {
+                                    setTimeout(function() {
+                                        self.saveFieldChange(fieldName);
+                                    }, 500);
+                                });
+                            }
+                        });
+                        
+                        $field.on('click', '.wpfe-acf-gallery-item-remove', function(e) {
+                            e.preventDefault();
+                            var $item = $(this).closest('.wpfe-acf-gallery-item');
+                            $item.remove();
+                            self.updateGalleryValues($field);
+                            
+                            // Auto-save when gallery item is removed
+                            if (self.getAutoSavePreference()) {
+                                setTimeout(function() {
+                                    self.saveFieldChange(fieldName);
+                                }, 500);
+                            }
+                        });
+                        break;
+                        
+                    case 'checkbox':
                     $field.find('.wpfe-acf-checkbox-input').on('change', function() {
                         var values = [];
                         $field.find('.wpfe-acf-checkbox-input:checked').each(function() {
@@ -2389,6 +2835,26 @@
                         $field.find('input[type="hidden"]').val($(this).prop('checked') ? '1' : '0');
                     });
                     break;
+                    
+                // Add event handlers for date pickers and color pickers
+                case 'date_picker':
+                case 'time_picker':
+                case 'date_time_picker':
+                case 'color_picker':
+                    // These special fields need extra attention
+                    $field.find('input').on('change', function() {
+                        if (self.getAutoSavePreference()) {
+                            clearTimeout($(this).data('autosave-timer'));
+                            $(this).data('autosave-timer', setTimeout(function() {
+                                self.saveFieldChange(fieldName);
+                            }, 1000));
+                        }
+                    });
+                    break;
+            }
+            } catch (error) {
+                // Log error but don't break the UI
+                console.error('Error setting up ACF field handlers:', fieldName, error);
             }
         },
         
@@ -2984,6 +3450,9 @@
                 
                 // Update the hidden input value
                 $hiddenInput.val(JSON.stringify(newGalleryItems));
+                
+                // Trigger our custom event for gallery updates
+                $(window).trigger('wpfe-gallery-updated', [fieldName, newGalleryItems]);
             });
             
             // Open the media library
@@ -3008,9 +3477,12 @@
             // Update the hidden input
             $hiddenInput.val(JSON.stringify(galleryValues));
             
+            // Trigger gallery updated event
+            var fieldName = $field.closest('.wpfe-editor-field').data('field-name');
+            $(window).trigger('wpfe-gallery-updated', [fieldName, galleryValues]);
+            
             // If live preview is enabled, try to update the display
             if (wpfe_data.live_preview) {
-                var fieldName = $field.closest('.wpfe-editor-field').data('field-name');
                 var $element = $('[data-wpfe-field="' + fieldName + '"]');
                 
                 if ($element.length) {
@@ -3363,6 +3835,9 @@
                     var $field = $('.wpfe-editor-field[data-field-name="' + self.activeMediaField + '"]');
                     $field.find('.wpfe-editor-image-preview img').attr('src', attachment.sizes.thumbnail ? attachment.sizes.thumbnail.url : attachment.url).show();
                     $field.find('.wpfe-editor-image-remove').show();
+                    
+                    // Trigger an event that can be used by auto-save
+                    $(window).trigger('wpfe-media-selected', [self.activeMediaField, attachment.id]);
                 });
             }
             

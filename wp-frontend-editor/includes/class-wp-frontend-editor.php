@@ -217,6 +217,7 @@ class WP_Frontend_Editor {
                 'i18n'              => array(
                     'edit'            => __( 'Edit', 'wp-frontend-editor' ),
                     'save'            => __( 'Save', 'wp-frontend-editor' ),
+                    'saved'           => __( 'Saved!', 'wp-frontend-editor' ),
                     'cancel'          => __( 'Cancel', 'wp-frontend-editor' ),
                     'saving'          => __( 'Saving...', 'wp-frontend-editor' ),
                     'success'         => __( 'Changes saved successfully', 'wp-frontend-editor' ),
@@ -226,6 +227,7 @@ class WP_Frontend_Editor {
                     'remove'          => __( 'Remove', 'wp-frontend-editor' ),
                     'unsupported_field' => __( 'This field type is not supported yet.', 'wp-frontend-editor' ),
                     'discovered_field' => __( 'Discovered field', 'wp-frontend-editor' ),
+                    'auto_save'       => __( 'Auto-save', 'wp-frontend-editor' ),
                 ),
             )
         );
