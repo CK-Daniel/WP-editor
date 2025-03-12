@@ -156,7 +156,7 @@ class WP_Frontend_Editor {
             WPFE_VERSION
         );
 
-        // Enqueue JavaScript
+        // Enqueue main JavaScript file
         wp_enqueue_script(
             'wp-frontend-editor',
             WPFE_PLUGIN_URL . 'public/js/frontend-editor.js',
@@ -164,6 +164,30 @@ class WP_Frontend_Editor {
             WPFE_VERSION,
             true
         );
+        
+        // Enqueue modular JavaScript files in the correct order
+        $modules = array(
+            'utils',
+            'core',
+            'elements',
+            'events',
+            'ajax',
+            'fields',
+            'ui',
+            'mobile',
+            'acf',
+            'main'
+        );
+        
+        foreach ( $modules as $module ) {
+            wp_enqueue_script(
+                'wp-frontend-editor-' . $module,
+                WPFE_PLUGIN_URL . 'public/js/modules/' . $module . '.js',
+                array( 'wp-frontend-editor' ),
+                WPFE_VERSION,
+                true
+            );
+        }
 
         // Apply custom CSS if defined
         if ( ! empty( $this->options['custom_css'] ) ) {
