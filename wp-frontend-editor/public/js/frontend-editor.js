@@ -39,6 +39,9 @@
             // Initialize editable elements
             this.initEditableElements();
             
+            // Initialize ACF complex fields UI
+            this.initAcfComplexFields();
+            
             // Initialize mobile-specific features
             this.initMobileFeatures();
             
@@ -1122,6 +1125,84 @@
         },
         
         /**
+         * Initialize ACF complex fields UI improvements
+         * Adds collapsible sections and better handling for repeaters, flexible content, and groups
+         */
+        initAcfComplexFields: function() {
+            var self = this;
+            
+            // Wait for the sidebar content to be loaded before initializing
+            this.sidebar.on('wpfe:sidebar:loaded', function() {
+                // ACF Repeater Fields handling
+                self.sidebar.on('click', '.acf-repeater-header', function() {
+                    var $header = $(this);
+                    var $repeater = $header.closest('.acf-repeater');
+                    
+                    // Toggle collapsed state
+                    $repeater.toggleClass('acf-collapsed');
+                    
+                    // Refresh any dynamic content that might be affected
+                    self.refreshFieldInputs();
+                });
+                
+                // ACF Flexible Content handling
+                self.sidebar.on('click', '.acf-layout-label', function() {
+                    var $header = $(this);
+                    var $layout = $header.closest('.acf-layout');
+                    
+                    // Toggle collapsed state
+                    $layout.toggleClass('acf-collapsed');
+                    
+                    // Refresh any dynamic content that might be affected
+                    self.refreshFieldInputs();
+                });
+                
+                // ACF Group Fields handling
+                self.sidebar.on('click', '.acf-group-header', function() {
+                    var $header = $(this);
+                    var $group = $header.closest('.acf-group');
+                    
+                    // Toggle collapsed state
+                    $group.toggleClass('acf-collapsed');
+                    
+                    // Refresh any dynamic content that might be affected
+                    self.refreshFieldInputs();
+                });
+                
+                // Add headers to groups that might be missing them
+                self.sidebar.find('.acf-group').each(function() {
+                    var $group = $(this);
+                    
+                    if (!$group.find('.acf-group-header').length) {
+                        // Get the field label from parent container if available
+                        var fieldLabel = $group.closest('.wpfe-editor-field').find('label').first().text() || 'Group Field';
+                        
+                        // Add a header to the group
+                        $group.prepend('<div class="acf-group-header">' + fieldLabel + '</div>');
+                        
+                        // Wrap the fields in content div if not already
+                        if (!$group.find('.acf-group-content').length) {
+                            $group.find('.acf-field').wrapAll('<div class="acf-group-content"></div>');
+                        }
+                    }
+                });
+                
+                // Enhance repeater rows with headers
+                self.sidebar.find('.acf-repeater-row').each(function(index) {
+                    var $row = $(this);
+                    
+                    if (!$row.find('.acf-repeater-row-header').length) {
+                        // Get the repeater field label
+                        var fieldLabel = $row.closest('.acf-repeater').find('.acf-repeater-header-label').text() || 'Repeater';
+                        
+                        // Add a header to the row
+                        $row.prepend('<div class="acf-repeater-row-header">' + fieldLabel + ' #' + (index + 1) + '</div>');
+                    }
+                });
+            });
+        },
+        
+        /**
          * Throttle a function call to run at most once per specified period
          * @param {Function} func The function to throttle
          * @param {number} limit The time limit in ms
@@ -1146,6 +1227,34 @@
                     }, limit - (Date.now() - lastRan));
                 }
             };
+        },
+        
+        /**
+         * Refresh field inputs after UI changes
+         * This ensures wysiwyg editors, media pickers and other dynamic elements work properly
+         */
+        refreshFieldInputs: function() {
+            var self = this;
+            
+            // Short delay to allow DOM changes to complete
+            setTimeout(function() {
+                // Refresh WYSIWYG editors if any
+                if (typeof tinymce !== 'undefined') {
+                    tinymce.triggerSave();
+                    tinymce.editors.forEach(function(editor) {
+                        if (editor && !editor.isHidden()) {
+                            editor.hide();
+                            editor.show();
+                        }
+                    });
+                }
+                
+                // Trigger resize to ensure media elements like galleries render correctly
+                $(window).trigger('resize');
+                
+                // Trigger custom event for other plugins to hook into
+                self.sidebar.trigger('wpfe:fields:refreshed');
+            }, 50);
         },
         
         /**
@@ -1241,6 +1350,24 @@
                 } else {
                     self.sidebar.removeClass('expanded');
                 }
+            });
+            
+            this.sidebar.find('input[name="wpfe-wider-sidebar"]').on('change', function() {
+                if ($(this).prop('checked')) {
+                    // Use wider sidebar for complex ACF fields
+                    self.sidebar.css('width', '520px').addClass('wpfe-wide-sidebar');
+                } else {
+                    // Reset to default width
+                    if (wpfe_data.sidebar_width && parseInt(wpfe_data.sidebar_width) > 0) {
+                        self.sidebar.css('width', parseInt(wpfe_data.sidebar_width) + 'px');
+                    } else {
+                        self.sidebar.css('width', '');
+                    }
+                    self.sidebar.removeClass('wpfe-wide-sidebar');
+                }
+                
+                // Refresh field layouts
+                self.refreshFieldInputs();
             });
             
             this.sidebar.find('select[name="wpfe-sidebar-position"]').on('change', function() {

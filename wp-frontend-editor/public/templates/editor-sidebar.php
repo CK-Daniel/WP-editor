@@ -80,6 +80,12 @@ if ( ! defined( 'ABSPATH' ) ) {
                         <?php esc_html_e( 'Full-width editor', 'wp-frontend-editor' ); ?>
                     </label>
                 </div>
+                <div class="wpfe-editor-setting">
+                    <label>
+                        <input type="checkbox" name="wpfe-wider-sidebar">
+                        <?php esc_html_e( 'Wide sidebar for complex fields', 'wp-frontend-editor' ); ?>
+                    </label>
+                </div>
                 <div class="wpfe-editor-setting wpfe-editor-setting-select">
                     <label for="wpfe-sidebar-position"><?php esc_html_e( 'Editor position', 'wp-frontend-editor' ); ?></label>
                     <select id="wpfe-sidebar-position" name="wpfe-sidebar-position">

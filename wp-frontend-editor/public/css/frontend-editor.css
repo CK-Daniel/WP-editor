@@ -39,8 +39,8 @@
     --wpfe-info-light: #f0f6fc;
     
     /* Dimensions */
-    --wpfe-sidebar-width: 400px;
-    --wpfe-sidebar-width-tablet: 340px;
+    --wpfe-sidebar-width: 480px;
+    --wpfe-sidebar-width-tablet: 420px;
     --wpfe-sidebar-width-mobile: 100%;
     --wpfe-sidebar-height-mobile: 80%;
     --wpfe-border-radius: 4px;
@@ -241,6 +241,33 @@
 
 .wpfe-editor-sidebar.expanded {
     width: 80% !important;
+}
+
+/* Wide sidebar for complex ACF fields */
+.wpfe-editor-sidebar.wpfe-wide-sidebar {
+    width: 520px !important;
+    transition: width 0.3s ease !important;
+}
+
+/* Special styling for complex fields in wide mode */
+.wpfe-wide-sidebar .acf-repeater,
+.wpfe-wide-sidebar .acf-flexible-content,
+.wpfe-wide-sidebar .acf-group {
+    max-width: none !important;
+    margin-right: 10px !important;
+}
+
+.wpfe-wide-sidebar .acf-gallery-wrap .acf-gallery-item {
+    width: calc(33.3333% - 8px) !important;
+}
+
+.wpfe-wide-sidebar .acf-repeater-row {
+    padding: 20px !important;
+}
+
+.wpfe-wide-sidebar .acf-layout-content,
+.wpfe-wide-sidebar .acf-group-content {
+    padding: 20px !important;
 }
 
 /* Admin Bar Support */
@@ -993,7 +1020,7 @@ textarea.wpfe-editor-input {
 }
 
 /* ACF Complex Field Styling */
-/* These styles match the WordPress admin backend style for ACF fields */
+/* These styles match the WordPress admin backend style for ACF fields with enhanced sidebar display */
 
 /* Common field styling */
 .wpfe-field {
@@ -1123,31 +1150,41 @@ textarea.wpfe-editor-input {
 /* Repeater field */
 .acf-repeater {
     border: 1px solid var(--wpfe-border) !important;
-    border-radius: 3px !important;
+    border-radius: 8px !important;
     overflow: hidden !important;
-    margin-bottom: 20px !important;
+    margin-bottom: 24px !important;
+    box-shadow: 0 1px 3px var(--wpfe-shadow-light) !important;
 }
 
 .acf-repeater-header {
     display: flex !important;
+    align-items: center !important;
     background-color: var(--wpfe-gray-100) !important;
     border-bottom: 1px solid var(--wpfe-border) !important;
-    padding: 8px 12px !important;
+    padding: 12px 16px !important;
 }
 
 .acf-repeater-header-label {
     flex: 1 !important;
     font-weight: 600 !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
     padding: 5px !important;
     color: var(--wpfe-gray-700) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
 }
 
 .acf-repeater-row {
     display: flex !important;
+    flex-direction: column !important; /* Stack fields vertically for better readability */
     border-bottom: 1px solid var(--wpfe-border) !important;
     background-color: var(--wpfe-white) !important;
-    padding: 8px 12px !important;
+    padding: 16px !important;
+    transition: background-color 0.2s ease !important;
+}
+
+.acf-repeater-row:hover {
+    background-color: var(--wpfe-info-light) !important;
 }
 
 .acf-repeater-row:last-child {
@@ -1155,79 +1192,151 @@ textarea.wpfe-editor-input {
 }
 
 .acf-repeater-row:nth-child(even) {
-    background-color: var(--wpfe-gray-100) !important;
+    background-color: var(--wpfe-light-gray) !important;
+}
+
+.acf-repeater-row:nth-child(even):hover {
+    background-color: var(--wpfe-info-light) !important;
 }
 
 .acf-repeater-row .acf-field {
-    flex: 1 !important;
-    padding: 5px !important;
+    padding: 8px 0 !important;
     min-width: 0 !important; /* For text overflow */
+    border-bottom: 1px dashed var(--wpfe-gray-200) !important;
+    margin-bottom: 8px !important;
+}
+
+.acf-repeater-row .acf-field:last-child {
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+}
+
+.acf-repeater-row-header {
+    font-weight: 600 !important;
+    margin-bottom: 12px !important;
+    padding-bottom: 6px !important;
+    border-bottom: 2px solid var(--wpfe-primary-light) !important;
+    color: var(--wpfe-primary-dark) !important;
 }
 
 .acf-empty-repeater {
-    padding: 15px !important;
+    padding: 20px !important;
     text-align: center !important;
     color: var(--wpfe-gray-500) !important;
     background-color: var(--wpfe-gray-100) !important;
     font-style: italic !important;
+    border-radius: 4px !important;
 }
 
 /* Flexible content field */
 .acf-flexible-content {
-    margin-bottom: 20px !important;
+    margin-bottom: 24px !important;
 }
 
 .acf-layout {
     border: 1px solid var(--wpfe-border) !important;
-    border-radius: 3px !important;
-    margin-bottom: 15px !important;
+    border-radius: 8px !important;
+    margin-bottom: 20px !important;
     background-color: var(--wpfe-white) !important;
     overflow: hidden !important;
+    box-shadow: 0 1px 3px var(--wpfe-shadow-light) !important;
+    transition: box-shadow 0.2s ease !important;
+}
+
+.acf-layout:hover {
+    box-shadow: 0 3px 8px var(--wpfe-shadow-light) !important;
 }
 
 .acf-layout-label {
-    background-color: var(--wpfe-gray-100) !important;
-    padding: 10px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    background-color: var(--wpfe-primary-light) !important;
+    padding: 12px 16px !important;
     font-weight: 600 !important;
     border-bottom: 1px solid var(--wpfe-border) !important;
-    color: var(--wpfe-gray-800) !important;
+    color: var(--wpfe-white) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    font-size: 14px !important;
+}
+
+.acf-layout-label:before {
+    content: "•" !important;
+    margin-right: 8px !important;
+    font-size: 18px !important;
+}
+
+.acf-layout-content {
+    padding: 16px !important;
 }
 
 .acf-layout .acf-field {
-    padding: 12px !important;
-    border-bottom: 1px solid var(--wpfe-border) !important;
+    padding: 12px 0 !important;
+    margin-bottom: 12px !important;
+    border-bottom: 1px dashed var(--wpfe-gray-200) !important;
 }
 
 .acf-layout .acf-field:last-child {
     border-bottom: none !important;
+    margin-bottom: 0 !important;
+}
+
+.acf-layout .acf-field-label {
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
+    color: var(--wpfe-primary-dark) !important;
 }
 
 .acf-empty-flexible {
-    padding: 15px !important;
+    padding: 24px !important;
     text-align: center !important;
     color: var(--wpfe-gray-500) !important;
     background-color: var(--wpfe-gray-100) !important;
     font-style: italic !important;
     border: 1px solid var(--wpfe-border) !important;
-    border-radius: 3px !important;
+    border-radius: 8px !important;
+    box-shadow: inset 0 1px 3px var(--wpfe-shadow-light) !important;
 }
 
 /* Group field */
 .acf-group {
     border: 1px solid var(--wpfe-border) !important;
-    border-radius: 3px !important;
-    padding: 10px !important;
+    border-radius: 8px !important;
+    padding: 0 !important;
     background-color: var(--wpfe-white) !important;
-    margin-bottom: 20px !important;
+    margin-bottom: 24px !important;
+    box-shadow: 0 1px 3px var(--wpfe-shadow-light) !important;
+    overflow: hidden !important;
+}
+
+.acf-group-header {
+    background-color: var(--wpfe-gray-100) !important;
+    padding: 12px 16px !important;
+    border-bottom: 1px solid var(--wpfe-border) !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    color: var(--wpfe-gray-800) !important;
+}
+
+.acf-group-content {
+    padding: 16px !important;
 }
 
 .acf-group .acf-field {
-    padding: 10px !important;
-    border-bottom: 1px solid var(--wpfe-border) !important;
+    padding: 12px 0 !important;
+    margin-bottom: 12px !important;
+    border-bottom: 1px dashed var(--wpfe-gray-200) !important;
 }
 
 .acf-group .acf-field:last-child {
     border-bottom: none !important;
+    margin-bottom: 0 !important;
+}
+
+.acf-group .acf-field-label {
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
+    color: var(--wpfe-primary-dark) !important;
 }
 
 /* Clone field */
@@ -1294,27 +1403,79 @@ textarea.wpfe-editor-input {
 
 /* Responsive adjustments for complex fields */
 @media screen and (max-width: 782px) {
+    /* We've already made repeater rows vertical by default for better usability */
+    
+    /* Better spacing for mobile */
     .acf-repeater-row {
-        flex-direction: column !important;
+        padding: 16px 12px !important;
     }
     
-    .acf-repeater-header {
-        display: none !important;
+    .acf-layout {
+        margin-bottom: 16px !important;
     }
     
-    .acf-repeater-row .acf-field {
-        width: 100% !important;
-        padding: 8px 5px !important;
+    .acf-layout-label {
+        padding: 10px 12px !important;
+        font-size: 13px !important;
     }
     
+    .acf-layout-content {
+        padding: 12px !important;
+    }
+    
+    .acf-group-header {
+        padding: 10px 12px !important;
+    }
+    
+    .acf-group-content {
+        padding: 12px !important;
+    }
+    
+    /* Make gallery items responsive */
     .acf-gallery-item {
         width: calc(50% - 6px) !important;
     }
     
+    /* Add collapsible functionality for better space management */
+    .acf-repeater-header,
+    .acf-layout-label,
+    .acf-group-header {
+        cursor: pointer !important;
+        position: relative !important;
+    }
+    
+    .acf-repeater-header:after,
+    .acf-layout-label:after,
+    .acf-group-header:after {
+        content: "\f140" !important; /* dashicons-arrow-down */
+        font-family: dashicons !important;
+        position: absolute !important;
+        right: 12px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        transition: transform 0.2s ease !important;
+    }
+    
+    .acf-collapsed .acf-repeater-header:after,
+    .acf-collapsed .acf-layout-label:after,
+    .acf-collapsed .acf-group-header:after {
+        transform: translateY(-50%) rotate(180deg) !important;
+    }
+    
+    .acf-collapsed .acf-repeater-row,
+    .acf-collapsed .acf-layout-content,
+    .acf-collapsed .acf-group-content {
+        display: none !important;
+    }
+    
+    /* Better touch targets for mobile */
     .acf-field-label {
         font-size: 13px !important;
         border-bottom: 1px solid var(--wpfe-gray-200) !important;
         padding-bottom: 5px !important;
+        min-height: var(--wpfe-touch-target-size) !important;
+        display: flex !important;
+        align-items: center !important;
         margin-bottom: 8px !important;
     }
 }
