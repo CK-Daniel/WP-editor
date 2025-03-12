@@ -535,15 +535,26 @@ class WP_Frontend_Editor_ACF {
      * @return string|false The CSS selector or false if not found.
      */
     private function get_acf_field_selector( $field, $value ) {
+        // Skip fields without a name or key
+        if ( empty( $field['name'] ) || empty( $field['key'] ) ) {
+            return false;
+        }
+        
         // Prepare the field name in various formats for better selector matching
-        $name = $field['name'];
+        $name = trim($field['name']);
+        if ( empty($name) ) {
+            return false;
+        }
+        
         $name_dashed = str_replace('_', '-', $name);
         $name_without_prefix = preg_replace('/^(acf|field)_/', '', $name);
         $name_without_prefix_dashed = str_replace('_', '-', $name_without_prefix);
         
         // Core selectors based on field name
-        $selectors = array(
-            // Class-based selectors (common in themes)
+        $selectors = array();
+        
+        // Class-based selectors (common in themes)
+        $selectors = array_merge($selectors, array(
             '.acf-field-' . $name,
             '.acf-field-' . $name_dashed,
             '.field-' . $name,
@@ -571,89 +582,135 @@ class WP_Frontend_Editor_ACF {
             '[data-field-name="' . $name . '"]',
             '[data-name="' . $name . '"]',
             '[data-field="' . $name . '"]',
-            '[data-acf="' . $name . '"]',
-            '[data-key="' . $field['key'] . '"]',
-            '[data-field-key="' . $field['key'] . '"]',
-            
-            // Additional selectors for variations without acf/field prefix
-            '.acf-field-' . $name_without_prefix,
-            '.acf-field-' . $name_without_prefix_dashed,
-            '.field-' . $name_without_prefix,
-            '.field-' . $name_without_prefix_dashed,
-            '.' . $name_without_prefix . '-field',
-            '.' . $name_without_prefix . '-wrapper'
-        );
+            '[data-acf="' . $name . '"]'
+        ));
+        
+        // Add non-prefix variations if they're different from the name
+        if ( $name !== $name_without_prefix && !empty($name_without_prefix) ) {
+            $selectors = array_merge($selectors, array(
+                '.acf-field-' . $name_without_prefix,
+                '.acf-field-' . $name_without_prefix_dashed,
+                '.field-' . $name_without_prefix,
+                '.field-' . $name_without_prefix_dashed,
+                '.' . $name_without_prefix . '-field',
+                '.' . $name_without_prefix . '-wrapper'
+            ));
+        }
+        
+        // Add key-based selectors
+        if ( !empty($field['key']) ) {
+            $selectors = array_merge($selectors, array(
+                '[data-key="' . $field['key'] . '"]',
+                '[data-field-key="' . $field['key'] . '"]'
+            ));
+        }
         
         // Field type-specific selectors
-        switch ( $field['type'] ) {
-            case 'text':
-            case 'textarea':
-            case 'wysiwyg':
-                // Check for common text containers
-                $selectors[] = '.acf-text-value[data-name="' . $name . '"]';
-                $selectors[] = '.acf-content[data-name="' . $name . '"]';
-                $selectors[] = 'div[class*="' . $name . '"], p[class*="' . $name . '"], span[class*="' . $name . '"]';
-                $selectors[] = 'h1[class*="' . $name . '"], h2[class*="' . $name . '"], h3[class*="' . $name . '"], h4[class*="' . $name . '"]';
-                break;
-                
-            case 'image':
-            case 'gallery':
-                // Handle images and galleries
-                $selectors[] = 'img[class*="' . $name . '"]';
-                $selectors[] = '.acf-image-' . $name;
-                $selectors[] = '.acf-gallery-' . $name;
-                $selectors[] = '.wp-image-' . (is_array($value) ? ($value['ID'] ?? $value) : $value);
-                
-                // Try to match by file name in src attribute
-                if ($value) {
-                    $image_id = is_array($value) ? ($value['ID'] ?? $value) : $value;
-                    $image_url = wp_get_attachment_url($image_id);
-                    if ($image_url) {
-                        $selectors[] = 'img[src*="' . basename($image_url) . '"]';
+        if (isset($field['type'])) {
+            switch ($field['type']) {
+                case 'text':
+                case 'textarea':
+                case 'wysiwyg':
+                    // Check for common text containers
+                    $selectors = array_merge($selectors, array(
+                        '.acf-text-value[data-name="' . $name . '"]',
+                        '.acf-content[data-name="' . $name . '"]',
+                        'div[class*="' . $name . '"]',
+                        'p[class*="' . $name . '"]',
+                        'span[class*="' . $name . '"]',
+                        'h1[class*="' . $name . '"]',
+                        'h2[class*="' . $name . '"]',
+                        'h3[class*="' . $name . '"]',
+                        'h4[class*="' . $name . '"]'
+                    ));
+                    break;
+                    
+                case 'image':
+                case 'gallery':
+                    // Handle images and galleries
+                    $type_selectors = array(
+                        'img[class*="' . $name . '"]',
+                        '.acf-image-' . $name,
+                        '.acf-gallery-' . $name
+                    );
+                    
+                    // Add id-based selectors only if we have a valid image ID
+                    if ($value) {
+                        $image_id = is_array($value) ? ($value['ID'] ?? $value) : $value;
+                        if (is_numeric($image_id) && $image_id > 0) {
+                            $type_selectors[] = '.wp-image-' . $image_id;
+                            
+                            // Try to match by file name in src attribute
+                            $image_url = wp_get_attachment_url($image_id);
+                            if ($image_url && basename($image_url)) {
+                                $type_selectors[] = 'img[src*="' . basename($image_url) . '"]';
+                            }
+                        }
                     }
-                }
-                
-                // Image containers
-                $selectors[] = '.image-wrapper[class*="' . $name . '"]';
-                $selectors[] = 'figure[class*="' . $name . '"]';
-                $selectors[] = '.wp-block-image[class*="' . $name . '"]';
-                break;
-                
-            case 'link':
-                $selectors[] = 'a[class*="' . $name . '"]';
-                $selectors[] = '.link-' . $name;
-                $selectors[] = '.acf-link-' . $name;
-                break;
-                
-            case 'select':
-            case 'checkbox':
-            case 'radio':
-                $selectors[] = '.acf-value-' . $name;
-                $selectors[] = '.acf-choice-' . $name;
-                $selectors[] = '.choice-' . $name;
-                break;
-                
-            case 'repeater':
-            case 'flexible_content':
-                $selectors[] = '.acf-repeater-' . $name;
-                $selectors[] = '.acf-flexible-' . $name;
-                $selectors[] = '.repeater-' . $name;
-                $selectors[] = '.flexible-' . $name;
-                $selectors[] = '.acf-blocks[data-name="' . $name . '"]';
-                $selectors[] = '.acf-rows[data-name="' . $name . '"]';
-                break;
+                    
+                    // Image containers
+                    $type_selectors = array_merge($type_selectors, array(
+                        '.image-wrapper[class*="' . $name . '"]',
+                        'figure[class*="' . $name . '"]',
+                        '.wp-block-image[class*="' . $name . '"]'
+                    ));
+                    
+                    $selectors = array_merge($selectors, $type_selectors);
+                    break;
+                    
+                case 'link':
+                    $selectors = array_merge($selectors, array(
+                        'a[class*="' . $name . '"]',
+                        '.link-' . $name,
+                        '.acf-link-' . $name
+                    ));
+                    break;
+                    
+                case 'select':
+                case 'checkbox':
+                case 'radio':
+                    $selectors = array_merge($selectors, array(
+                        '.acf-value-' . $name,
+                        '.acf-choice-' . $name,
+                        '.choice-' . $name
+                    ));
+                    break;
+                    
+                case 'repeater':
+                case 'flexible_content':
+                    $selectors = array_merge($selectors, array(
+                        '.acf-repeater-' . $name,
+                        '.acf-flexible-' . $name,
+                        '.repeater-' . $name,
+                        '.flexible-' . $name,
+                        '.acf-blocks[data-name="' . $name . '"]',
+                        '.acf-rows[data-name="' . $name . '"]'
+                    ));
+                    break;
+            }
         }
         
         // Add selectors based on field label (convert to lowercase and dasherize)
-        if (isset($field['label'])) {
-            $label_selector = strtolower(str_replace(' ', '-', $field['label']));
-            $selectors[] = '.' . $label_selector;
-            $selectors[] = '.acf-' . $label_selector;
-            $selectors[] = '.field-' . $label_selector;
+        if (isset($field['label']) && !empty($field['label'])) {
+            $label_selector = sanitize_title($field['label']);
+            if (!empty($label_selector)) {
+                $selectors = array_merge($selectors, array(
+                    '.' . $label_selector,
+                    '.acf-' . $label_selector,
+                    '.field-' . $label_selector
+                ));
+            }
         }
         
         // Remove any empty selectors
-        $selectors = array_filter($selectors);
+        $selectors = array_filter($selectors, function($selector) {
+            return !empty($selector) && strlen(trim($selector)) > 1;
+        });
+        
+        // Skip if no valid selectors
+        if (empty($selectors)) {
+            return false;
+        }
         
         return implode(', ', $selectors);
     }

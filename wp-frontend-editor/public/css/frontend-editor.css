@@ -515,6 +515,160 @@ textarea.wpfe-editor-input {
     border: 1px solid #ddd !important;
     border-radius: 4px !important;
     overflow: hidden !important;
+    cursor: move !important;
+    transition: transform 0.2s, box-shadow 0.2s !important;
+}
+
+.wpfe-gallery-item:hover {
+    transform: scale(1.02) !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
+}
+
+/* Taxonomy field */
+.wpfe-editor-taxonomy-field {
+    margin-bottom: 15px !important;
+}
+
+.wpfe-taxonomy-search {
+    margin-bottom: 10px !important;
+}
+
+.wpfe-taxonomy-search-input {
+    width: 100% !important;
+    padding: 8px !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+}
+
+.wpfe-taxonomy-items {
+    max-height: 300px !important;
+    overflow-y: auto !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+    padding: 10px !important;
+    background-color: #f9f9f9 !important;
+}
+
+.wpfe-taxonomy-item {
+    margin-bottom: 5px !important;
+    padding: 5px !important;
+    border-radius: 3px !important;
+    transition: background-color 0.2s !important;
+}
+
+.wpfe-taxonomy-item:hover {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.wpfe-taxonomy-item label {
+    display: flex !important;
+    align-items: center !important;
+    font-weight: normal !important;
+    cursor: pointer !important;
+}
+
+.wpfe-taxonomy-checkbox {
+    margin-right: 8px !important;
+}
+
+.wpfe-term-count {
+    color: #888 !important;
+    font-size: 0.9em !important;
+    margin-left: 5px !important;
+}
+
+/* Relationship field */
+.wpfe-editor-relationship-field {
+    margin-bottom: 15px !important;
+}
+
+.wpfe-relationship-search {
+    margin-bottom: 10px !important;
+}
+
+.wpfe-relationship-search-input {
+    width: 100% !important;
+    padding: 8px !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+}
+
+.wpfe-relationship-wrapper {
+    display: flex !important;
+    gap: 20px !important;
+    margin-bottom: 10px !important;
+}
+
+.wpfe-relationship-available,
+.wpfe-relationship-selected {
+    flex: 1 !important;
+    min-height: 300px !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+    background-color: #f9f9f9 !important;
+}
+
+.wpfe-relationship-available h3,
+.wpfe-relationship-selected h3 {
+    margin: 0 !important;
+    padding: 10px !important;
+    background-color: #f0f0f0 !important;
+    border-bottom: 1px solid var(--wpfe-border) !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+}
+
+.wpfe-relationship-available-items,
+.wpfe-relationship-selected-items {
+    padding: 10px !important;
+    overflow-y: auto !important;
+    max-height: 250px !important;
+}
+
+.wpfe-relationship-item {
+    position: relative !important;
+    padding: 8px 30px 8px 10px !important;
+    margin-bottom: 5px !important;
+    background-color: #fff !important;
+    border: 1px solid var(--wpfe-border) !important;
+    border-radius: 3px !important;
+    cursor: move !important;
+    transition: background-color 0.2s !important;
+}
+
+.wpfe-relationship-item:hover {
+    background-color: #f0f0f0 !important;
+}
+
+.wpfe-relationship-item-title {
+    font-weight: 600 !important;
+    margin-bottom: 2px !important;
+}
+
+.wpfe-relationship-item-meta {
+    font-size: 11px !important;
+    color: #888 !important;
+}
+
+.wpfe-relationship-add-button,
+.wpfe-relationship-remove-button {
+    position: absolute !important;
+    top: 50% !important;
+    right: 5px !important;
+    transform: translateY(-50%) !important;
+    background: none !important;
+    border: none !important;
+    padding: 3px !important;
+    cursor: pointer !important;
+    color: #555 !important;
+}
+
+.wpfe-relationship-add-button:hover {
+    color: var(--wpfe-success) !important;
+}
+
+.wpfe-relationship-remove-button:hover {
+    color: var(--wpfe-error) !important;
 }
 
 .wpfe-gallery-item img {
@@ -523,21 +677,53 @@ textarea.wpfe-editor-input {
     object-fit: cover !important;
 }
 
-.wpfe-gallery-remove {
+.wpfe-gallery-item-actions {
     position: absolute !important;
-    top: 2px !important;
-    right: 2px !important;
+    top: 0 !important;
+    right: 0 !important;
     background: rgba(0,0,0,0.5) !important;
+    display: flex !important;
+    opacity: 0 !important;
+    transition: opacity 0.2s !important;
+}
+
+.wpfe-gallery-item:hover .wpfe-gallery-item-actions {
+    opacity: 1 !important;
+}
+
+.wpfe-gallery-item-remove {
+    background: none !important;
+    border: none !important;
     color: white !important;
-    border-radius: 50% !important;
-    width: 20px !important;
-    height: 20px !important;
+    cursor: pointer !important;
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    border: none !important;
-    cursor: pointer !important;
-    font-size: 12px !important;
+}
+
+.wpfe-gallery-item-remove:hover {
+    color: #ff6b6b !important;
+}
+
+.wpfe-gallery-item-remove .dashicons {
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+}
+
+.wpfe-gallery-item.ui-sortable-helper {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important;
+}
+
+.wpfe-gallery-placeholder {
+    width: 80px !important;
+    height: 80px !important;
+    border: 2px dashed var(--wpfe-border) !important;
+    border-radius: 4px !important;
+    background-color: rgba(0,0,0,0.05) !important;
 }
 
 /* Force visibility for small container elements */

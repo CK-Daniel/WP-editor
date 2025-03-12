@@ -23,6 +23,7 @@ class WP_Frontend_Editor_AJAX {
         add_action( 'wp_ajax_wpfe_get_fields', array( $this, 'get_fields' ) );
         add_action( 'wp_ajax_wpfe_save_fields', array( $this, 'save_fields' ) );
         add_action( 'wp_ajax_wpfe_get_image_data', array( $this, 'get_image_data' ) );
+        add_action( 'wp_ajax_wpfe_get_gallery_data', array( $this, 'get_gallery_data' ) );
         add_action( 'wp_ajax_wpfe_get_rendered_field', array( $this, 'get_rendered_field' ) );
         
         // Register REST API routes
@@ -107,6 +108,25 @@ class WP_Frontend_Editor_AJAX {
                             return is_numeric( $param );
                         },
                         'sanitize_callback' => 'absint',
+                        'required' => true,
+                    ),
+                ),
+            )
+        );
+        
+        // Register a route for getting gallery data
+        register_rest_route(
+            'wp-frontend-editor/v1',
+            '/get-gallery-data',
+            array(
+                'methods'             => 'GET',
+                'callback'            => array( $this, 'rest_get_gallery_data' ),
+                'permission_callback' => array( $this, 'rest_permissions_check' ),
+                'args'                => array(
+                    'attachment_ids' => array(
+                        'validate_callback' => function( $param ) {
+                            return is_string( $param ) || is_array( $param );
+                        },
                         'required' => true,
                     ),
                 ),
@@ -377,6 +397,7 @@ class WP_Frontend_Editor_AJAX {
         // Get image data
         $full_image_url = wp_get_attachment_url( $attachment_id );
         $large_image_data = wp_get_attachment_image_src( $attachment_id, 'large' );
+        $thumbnail_image_data = wp_get_attachment_image_src( $attachment_id, 'thumbnail' );
         $srcset = wp_get_attachment_image_srcset( $attachment_id, 'large' );
         $sizes = wp_get_attachment_image_sizes( $attachment_id, 'large' );
         
@@ -388,8 +409,79 @@ class WP_Frontend_Editor_AJAX {
                 'width'  => $large_image_data ? $large_image_data[1] : null,
                 'height' => $large_image_data ? $large_image_data[2] : null,
                 'full'   => $full_image_url,
+                'thumbnail_url' => $thumbnail_image_data ? $thumbnail_image_data[0] : $full_image_url,
                 'srcset' => $srcset,
                 'sizes'  => $sizes,
+            )
+        ) );
+    }
+    
+    /**
+     * Get gallery data via REST API.
+     *
+     * @param WP_REST_Request $request The request object.
+     * @return WP_REST_Response The response object.
+     */
+    public function rest_get_gallery_data( $request ) {
+        $attachment_ids = $request->get_param( 'attachment_ids' );
+        
+        // Parse the attachment IDs
+        if ( is_string( $attachment_ids ) ) {
+            if ( strpos( $attachment_ids, '[' ) === 0 ) {
+                // Try to parse JSON
+                $attachment_ids = json_decode( stripslashes( $attachment_ids ), true );
+            } else {
+                // Comma-separated list
+                $attachment_ids = array_map( 'absint', explode( ',', $attachment_ids ) );
+            }
+        }
+        
+        if ( ! is_array( $attachment_ids ) || empty( $attachment_ids ) ) {
+            return new WP_Error(
+                'wpfe_invalid_attachments',
+                __( 'Invalid attachment IDs', 'wp-frontend-editor' ),
+                array( 'status' => 400 )
+            );
+        }
+        
+        $gallery_data = array();
+        
+        foreach ( $attachment_ids as $attachment_id ) {
+            $attachment_id = absint( $attachment_id );
+            
+            if ( ! $attachment_id ) {
+                continue;
+            }
+            
+            // Get attachment info
+            $attachment = get_post( $attachment_id );
+            
+            if ( ! $attachment ) {
+                continue;
+            }
+            
+            // Get image URLs
+            $full_url = wp_get_attachment_url( $attachment_id );
+            $thumbnail_data = wp_get_attachment_image_src( $attachment_id, 'thumbnail' );
+            $thumbnail_url = $thumbnail_data ? $thumbnail_data[0] : $full_url;
+            
+            // Get alt text
+            $alt_text = get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+            
+            $gallery_data[] = array(
+                'id' => $attachment_id,
+                'url' => $full_url,
+                'thumbnail_url' => $thumbnail_url,
+                'title' => $attachment->post_title,
+                'caption' => $attachment->post_excerpt,
+                'alt' => $alt_text,
+            );
+        }
+        
+        return rest_ensure_response( array(
+            'success' => true,
+            'data' => array(
+                'images' => $gallery_data,
             )
         ) );
     }
@@ -546,6 +638,71 @@ class WP_Frontend_Editor_AJAX {
                         'label' => __( 'Featured Image', 'wp-frontend-editor' ),
                     );
                     break;
+                    
+                case 'categories':
+                case 'post_categories':
+                    // Get all categories
+                    $categories = get_categories(array(
+                        'hide_empty' => false,
+                        'orderby' => 'name',
+                        'order' => 'ASC'
+                    ));
+                    
+                    // Get post categories
+                    $post_categories = wp_get_post_categories($post_id, array('fields' => 'ids'));
+                    
+                    // Format categories for the UI with hierarchy
+                    $category_options = array();
+                    foreach ($categories as $category) {
+                        $category_options[] = array(
+                            'value' => $category->term_id,
+                            'label' => $category->name,
+                            'count' => $category->count,
+                            'parent' => $category->parent
+                        );
+                    }
+                    
+                    $data['post_categories'] = array(
+                        'value' => $post_categories,
+                        'type'  => 'taxonomy',
+                        'taxonomy' => 'category',
+                        'options' => $category_options,
+                        'label' => __( 'Categories', 'wp-frontend-editor' ),
+                        'hierarchical' => true
+                    );
+                    break;
+                    
+                case 'tags':
+                case 'post_tags':
+                    // Get all tags
+                    $tags = get_tags(array(
+                        'hide_empty' => false,
+                        'orderby' => 'name',
+                        'order' => 'ASC'
+                    ));
+                    
+                    // Get post tags
+                    $post_tags = wp_get_post_tags($post_id, array('fields' => 'ids'));
+                    
+                    // Format tags for the UI
+                    $tag_options = array();
+                    foreach ($tags as $tag) {
+                        $tag_options[] = array(
+                            'value' => $tag->term_id,
+                            'label' => $tag->name,
+                            'count' => $tag->count
+                        );
+                    }
+                    
+                    $data['post_tags'] = array(
+                        'value' => $post_tags,
+                        'type'  => 'taxonomy',
+                        'taxonomy' => 'post_tag',
+                        'options' => $tag_options,
+                        'label' => __( 'Tags', 'wp-frontend-editor' ),
+                        'hierarchical' => false
+                    );
+                    break;
 
                 default:
                     // Check if it's an ACF field
@@ -556,12 +713,54 @@ class WP_Frontend_Editor_AJAX {
                         if ( $acf_field ) {
                             $field_value = get_field( $field, $post_id, false );
                             
+                            // Add field-specific data for special field types
+                            $extra_data = array();
+                            
+                            // Add relationship field data
+                            if ($acf_field['type'] === 'relationship' || $acf_field['type'] === 'post_object') {
+                                // Get post type(s) from field config
+                                $post_types = isset($acf_field['post_type']) ? $acf_field['post_type'] : array('post');
+                                if (empty($post_types)) {
+                                    $post_types = array('post', 'page');
+                                }
+                                
+                                // Get the available posts
+                                $posts = get_posts(array(
+                                    'post_type' => $post_types,
+                                    'posts_per_page' => 50, // Limit for performance
+                                    'post_status' => 'publish',
+                                    'orderby' => 'title',
+                                    'order' => 'ASC'
+                                ));
+                                
+                                // Format posts for the UI
+                                $post_options = array();
+                                foreach ($posts as $post_obj) {
+                                    $post_options[] = array(
+                                        'id' => $post_obj->ID,
+                                        'title' => $post_obj->post_title,
+                                        'type' => $post_obj->post_type,
+                                        'date' => get_the_date('Y-m-d', $post_obj->ID)
+                                    );
+                                }
+                                
+                                $extra_data['post_options'] = $post_options;
+                                $extra_data['max'] = isset($acf_field['max']) ? $acf_field['max'] : 0;
+                                $extra_data['min'] = isset($acf_field['min']) ? $acf_field['min'] : 0;
+                                $extra_data['multiple'] = isset($acf_field['multiple']) && $acf_field['multiple'];
+                            }
+                            
                             $data[ $field ] = array(
                                 'value' => $field_value,
                                 'type'  => $acf_field['type'],
                                 'label' => $acf_field['label'],
                                 'field_config' => $acf_field,
                             );
+                            
+                            // Merge extra data if available
+                            if (!empty($extra_data)) {
+                                $data[$field] = array_merge($data[$field], $extra_data);
+                            }
                         }
                     }
                     break;
@@ -625,6 +824,35 @@ class WP_Frontend_Editor_AJAX {
                     }
                     
                     $updated_fields['featured_image'] = $attachment_id;
+                    break;
+                    
+                case 'post_categories':
+                    // Handle categories (expects array of term IDs)
+                    if (is_array($value)) {
+                        $term_ids = array_map('absint', $value);
+                        wp_set_post_categories($post_id, $term_ids);
+                        $updated_fields['post_categories'] = $term_ids;
+                    }
+                    break;
+                    
+                case 'post_tags':
+                    // Handle tags (expects array of term IDs)
+                    if (is_array($value)) {
+                        $term_ids = array_map('absint', $value);
+                        
+                        // Convert term IDs to tag names (WordPress expects tag names for wp_set_post_tags)
+                        $tag_names = array();
+                        foreach ($term_ids as $term_id) {
+                            $tag = get_term($term_id, 'post_tag');
+                            if ($tag && !is_wp_error($tag)) {
+                                $tag_names[] = $tag->name;
+                            }
+                        }
+                        
+                        // Replace all existing tags
+                        wp_set_post_tags($post_id, $tag_names, false);
+                        $updated_fields['post_tags'] = $term_ids;
+                    }
                     break;
 
                 default:
@@ -709,6 +937,7 @@ class WP_Frontend_Editor_AJAX {
         // Get image data
         $full_image_url = wp_get_attachment_url( $attachment_id );
         $large_image_data = wp_get_attachment_image_src( $attachment_id, 'large' );
+        $thumbnail_image_data = wp_get_attachment_image_src( $attachment_id, 'thumbnail' );
         $srcset = wp_get_attachment_image_srcset( $attachment_id, 'large' );
         $sizes = wp_get_attachment_image_sizes( $attachment_id, 'large' );
         
@@ -719,8 +948,81 @@ class WP_Frontend_Editor_AJAX {
             'width'  => $large_image_data ? $large_image_data[1] : null,
             'height' => $large_image_data ? $large_image_data[2] : null,
             'full'   => $full_image_url,
+            'thumbnail_url' => $thumbnail_image_data ? $thumbnail_image_data[0] : $full_image_url,
             'srcset' => $srcset,
             'sizes'  => $sizes,
+        ) );
+    }
+    
+    /**
+     * Get gallery data for multiple attachments.
+     * 
+     * Used to get thumbnail data for gallery fields.
+     */
+    public function get_gallery_data() {
+        // Check nonce
+        if ( ! check_ajax_referer( 'wpfe-editor-nonce', 'nonce', false ) ) {
+            wp_send_json_error( array(
+                'message' => __( 'Security check failed', 'wp-frontend-editor' ),
+            ) );
+        }
+        
+        // Get attachment IDs
+        $attachment_ids = isset( $_GET['attachment_ids'] ) ? $_GET['attachment_ids'] : '';
+        
+        // Parse the attachment IDs
+        if ( is_string( $attachment_ids ) ) {
+            if ( strpos( $attachment_ids, '[' ) === 0 ) {
+                // Try to parse JSON
+                $attachment_ids = json_decode( stripslashes( $attachment_ids ), true );
+            } else {
+                // Comma-separated list
+                $attachment_ids = array_map( 'absint', explode( ',', $attachment_ids ) );
+            }
+        }
+        
+        if ( ! is_array( $attachment_ids ) || empty( $attachment_ids ) ) {
+            wp_send_json_error( array(
+                'message' => __( 'Invalid attachment IDs', 'wp-frontend-editor' ),
+            ) );
+        }
+        
+        $gallery_data = array();
+        
+        foreach ( $attachment_ids as $attachment_id ) {
+            $attachment_id = absint( $attachment_id );
+            
+            if ( ! $attachment_id ) {
+                continue;
+            }
+            
+            // Get attachment info
+            $attachment = get_post( $attachment_id );
+            
+            if ( ! $attachment ) {
+                continue;
+            }
+            
+            // Get image URLs
+            $full_url = wp_get_attachment_url( $attachment_id );
+            $thumbnail_data = wp_get_attachment_image_src( $attachment_id, 'thumbnail' );
+            $thumbnail_url = $thumbnail_data ? $thumbnail_data[0] : $full_url;
+            
+            // Get alt text
+            $alt_text = get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+            
+            $gallery_data[] = array(
+                'id' => $attachment_id,
+                'url' => $full_url,
+                'thumbnail_url' => $thumbnail_url,
+                'title' => $attachment->post_title,
+                'caption' => $attachment->post_excerpt,
+                'alt' => $alt_text,
+            );
+        }
+        
+        wp_send_json_success( array(
+            'images' => $gallery_data,
         ) );
     }
     

@@ -63,7 +63,11 @@
                 text: $('#wpfe-editor-text-template').html(),
                 textarea: $('#wpfe-editor-textarea-template').html(),
                 wysiwyg: $('#wpfe-editor-wysiwyg-template').html(),
-                image: $('#wpfe-editor-image-template').html()
+                image: $('#wpfe-editor-image-template').html(),
+                gallery: $('#wpfe-editor-gallery-template').html(),
+                galleryItem: $('#wpfe-editor-gallery-item-template').html(),
+                taxonomy: $('#wpfe-editor-taxonomy-template').html(),
+                taxonomyItem: $('#wpfe-editor-taxonomy-item-template').html()
             };
         },
 
@@ -164,6 +168,49 @@
                     }, limit - (Date.now() - lastRan));
                 }
             };
+        },
+        
+        /**
+         * Build hierarchical taxonomy terms HTML
+         * 
+         * @param {Object} termsByParent Terms organized by parent ID
+         * @param {number} parentId The current parent ID to process
+         * @param {number} level The indentation level
+         * @param {Array} selectedValues Array of selected term IDs
+         * @param {string} taxonomy The taxonomy name
+         * @returns {string} HTML for the hierarchical terms
+         */
+        buildHierarchicalTermsHtml: function(termsByParent, parentId, level, selectedValues, taxonomy) {
+            var html = '';
+            var self = this;
+            var indent = level * 20; // 20px indent per level
+            
+            // If no terms for this parent, return empty string
+            if (!termsByParent[parentId]) {
+                return html;
+            }
+            
+            // Process terms for this parent
+            termsByParent[parentId].forEach(function(term) {
+                var checked = selectedValues.indexOf(term.value) !== -1 ? 'checked' : '';
+                
+                // Add this term
+                html += self.templates.taxonomyItem
+                    .replace(/{indent}/g, indent)
+                    .replace(/{input_type}/g, 'checkbox')
+                    .replace(/{taxonomy}/g, taxonomy)
+                    .replace(/{term_id}/g, term.value)
+                    .replace(/{checked}/g, checked)
+                    .replace(/{term_name}/g, term.label)
+                    .replace(/{term_count}/g, term.count || 0);
+                
+                // Process children if any
+                if (termsByParent[term.value]) {
+                    html += self.buildHierarchicalTermsHtml(termsByParent, term.value, level + 1, selectedValues, taxonomy);
+                }
+            });
+            
+            return html;
         },
         
         /**
@@ -268,29 +315,48 @@
             
             // Process each field
             $.each(fields, function(index, field) {
-                var selector = field.selector;
-                var $elements = $(selector);
-                
-                if (wpfe_data.debug_mode) {
-                    console.log('Looking for elements with selector:', selector, 'Found:', $elements.length);
+                // Skip fields without a valid selector or key
+                if (!field.selector || !field.key) {
+                    if (wpfe_data.debug_mode) {
+                        console.log('Skipping field with missing selector or key:', field);
+                    }
+                    return true; // Continue to next field
                 }
                 
-                if ($elements.length) {
-                    $elements.each(function() {
-                        var $element = $(this);
-                        
-                        // Don't apply to elements that already have the editable class
-                        if (!$element.hasClass('wpfe-editable')) {
-                            // Add editable class and data attributes
-                            $element.addClass('wpfe-editable')
-                                .attr('data-wpfe-field', field.key)
-                                .attr('data-wpfe-post-id', field.post_id)
-                                .attr('data-wpfe-field-type', 'acf');
+                try {
+                    // Validate the selector to avoid jQuery errors
+                    // This will throw an error if the selector is invalid
+                    var $testSelector = $(document.createElement('div')).find(field.selector);
+                    
+                    // If we got here, the selector is valid
+                    var $elements = $(field.selector);
+                    
+                    if (wpfe_data.debug_mode) {
+                        console.log('Looking for elements with selector:', field.selector, 'Found:', $elements.length);
+                    }
+                    
+                    if ($elements.length) {
+                        $elements.each(function() {
+                            var $element = $(this);
                             
-                            // Create and add edit button
-                            self.addEditButton($element, field.key, field.post_id);
-                        }
-                    });
+                            // Don't apply to elements that already have the editable class
+                            if (!$element.hasClass('wpfe-editable')) {
+                                // Add editable class and data attributes
+                                $element.addClass('wpfe-editable')
+                                    .attr('data-wpfe-field', field.key)
+                                    .attr('data-wpfe-post-id', field.post_id)
+                                    .attr('data-wpfe-field-type', 'acf');
+                                
+                                // Create and add edit button
+                                self.addEditButton($element, field.key, field.post_id);
+                            }
+                        });
+                    }
+                } catch (e) {
+                    // Log error for invalid selector
+                    if (wpfe_data.debug_mode) {
+                        console.error('Invalid selector for field:', field.key, field.selector, e);
+                    }
                 }
             });
             
@@ -435,6 +501,9 @@
             
             // Initialize WYSIWYG editors if present
             this.initWysiwygEditors();
+            
+            // Initialize taxonomy fields
+            this.initTaxonomyFields();
         },
 
         /**
@@ -475,6 +544,168 @@
                         .replace(/{image_url}/g, fieldData.url || '')
                         .replace(/{preview_display}/g, hasImage ? 'block' : 'none')
                         .replace(/{remove_display}/g, hasImage ? 'inline-block' : 'none');
+                    break;
+                
+                case 'gallery':
+                    // Process gallery field
+                    var galleryItemsHtml = '';
+                    var galleryValues = [];
+                    var missingImageIds = [];
+                    
+                    // Handle various formats of gallery data
+                    if (Array.isArray(fieldData.value)) {
+                        // Process array of image IDs or objects
+                        fieldData.value.forEach(function(item) {
+                            var imageId, imageUrl;
+                            
+                            // Different formats from ACF
+                            if (typeof item === 'object' && item !== null) {
+                                imageId = item.id || item.ID || '';
+                                imageUrl = item.url || item.sizes?.thumbnail?.url || '';
+                            } else {
+                                imageId = item;
+                                // We'll need to get the URL via AJAX later
+                                imageUrl = '';
+                            }
+                            
+                            if (imageId) {
+                                galleryValues.push(imageId);
+                                
+                                // Add gallery item if we have the URL
+                                if (imageUrl) {
+                                    galleryItemsHtml += this.templates.galleryItem
+                                        .replace(/{image_id}/g, imageId)
+                                        .replace(/{image_url}/g, imageUrl);
+                                } else {
+                                    // Add to list of URLs to fetch
+                                    missingImageIds.push(imageId);
+                                }
+                            }
+                        }, this);
+                    }
+                    
+                    // Generate gallery field HTML
+                    fieldInput = this.templates.gallery
+                        .replace(/{field_name}/g, fieldName)
+                        .replace(/{field_value}/g, JSON.stringify(galleryValues))
+                        .replace(/{gallery_items}/g, galleryItemsHtml);
+                        
+                    // If we have missing image URLs, fetch them after rendering
+                    if (missingImageIds.length > 0) {
+                        // Use a setTimeout to ensure the field is rendered before making the AJAX call
+                        setTimeout(function() {
+                            this.fetchGalleryImageData(fieldName, missingImageIds);
+                        }.bind(this), 100);
+                    }
+                    break;
+                    
+                case 'taxonomy':
+                    // Build the taxonomy items HTML
+                    var taxonomyItemsHtml = '';
+                    var taxonomyValues = Array.isArray(fieldData.value) ? fieldData.value : [];
+                    var hierarchical = fieldData.hierarchical || false;
+                    
+                    // Sort the options to put parent items before children
+                    var options = fieldData.options || [];
+                    
+                    // If hierarchical, organize terms by parent
+                    if (hierarchical) {
+                        // Build a hierarchy structure
+                        var termsByParent = {};
+                        options.forEach(function(term) {
+                            if (!termsByParent[term.parent]) {
+                                termsByParent[term.parent] = [];
+                            }
+                            termsByParent[term.parent].push(term);
+                        });
+                        
+                        // Build HTML for hierarchical terms
+                        taxonomyItemsHtml = this.buildHierarchicalTermsHtml(termsByParent, 0, 0, taxonomyValues, fieldData.taxonomy);
+                    } else {
+                        // Flat list for non-hierarchical taxonomies like tags
+                        options.forEach(function(term) {
+                            var checked = taxonomyValues.indexOf(term.value) !== -1 ? 'checked' : '';
+                            var inputType = hierarchical ? 'checkbox' : 'checkbox';
+                            
+                            taxonomyItemsHtml += this.templates.taxonomyItem
+                                .replace(/{indent}/g, 0)
+                                .replace(/{input_type}/g, inputType)
+                                .replace(/{taxonomy}/g, fieldData.taxonomy)
+                                .replace(/{term_id}/g, term.value)
+                                .replace(/{checked}/g, checked)
+                                .replace(/{term_name}/g, term.label)
+                                .replace(/{term_count}/g, term.count || 0);
+                        }, this);
+                    }
+                    
+                    // Create the taxonomy field HTML
+                    fieldInput = this.templates.taxonomy
+                        .replace(/{field_name}/g, fieldName)
+                        .replace(/{taxonomy}/g, fieldData.taxonomy)
+                        .replace(/{hierarchical}/g, hierarchical ? 'true' : 'false')
+                        .replace(/{taxonomy_items}/g, taxonomyItemsHtml)
+                        .replace(/{field_value}/g, JSON.stringify(taxonomyValues));
+                    break;
+                    
+                case 'relationship':
+                case 'post_object':
+                    // Get available and selected posts
+                    var postOptions = fieldData.post_options || [];
+                    var selectedValues = Array.isArray(fieldData.value) ? fieldData.value : (fieldData.value ? [fieldData.value] : []);
+                    var max = fieldData.max || 0;
+                    var min = fieldData.min || 0;
+                    var multiple = fieldData.multiple || fieldData.type === 'relationship';
+                    
+                    // Prepare available items HTML
+                    var availableItemsHtml = '';
+                    var selectedItemsHtml = '';
+                    
+                    // Loop through post options to create available and selected items
+                    postOptions.forEach(function(post) {
+                        var isSelected = false;
+                        
+                        // Check if post is selected
+                        if (Array.isArray(selectedValues)) {
+                            // For arrays, check if the post ID is in the array
+                            isSelected = selectedValues.indexOf(post.id) !== -1;
+                        } else if (typeof selectedValues === 'object' && selectedValues !== null) {
+                            // For object values (ACF sometimes returns objects)
+                            isSelected = selectedValues.id === post.id;
+                        } else {
+                            // For single values
+                            isSelected = selectedValues == post.id;
+                        }
+                        
+                        // Only show in available list if not selected
+                        if (!isSelected) {
+                            availableItemsHtml += this.templates.relationshipItem
+                                .replace(/{post_id}/g, post.id)
+                                .replace(/{post_title}/g, post.title)
+                                .replace(/{post_type}/g, post.type)
+                                .replace(/{post_date}/g, post.date || '')
+                                .replace(/{button_type}/g, 'add')
+                                .replace(/{button_icon}/g, 'plus');
+                        } else {
+                            // Add to selected items
+                            selectedItemsHtml += this.templates.relationshipItem
+                                .replace(/{post_id}/g, post.id)
+                                .replace(/{post_title}/g, post.title)
+                                .replace(/{post_type}/g, post.type)
+                                .replace(/{post_date}/g, post.date || '')
+                                .replace(/{button_type}/g, 'remove')
+                                .replace(/{button_icon}/g, 'minus');
+                        }
+                    }, this);
+                    
+                    // Create the relationship field HTML
+                    fieldInput = this.templates.relationship
+                        .replace(/{field_name}/g, fieldName)
+                        .replace(/{field_value}/g, JSON.stringify(selectedValues))
+                        .replace(/{available_items}/g, availableItemsHtml)
+                        .replace(/{selected_items}/g, selectedItemsHtml)
+                        .replace(/{max}/g, max)
+                        .replace(/{min}/g, min)
+                        .replace(/{multiple}/g, multiple ? 'true' : 'false');
                     break;
                     
                 default:
@@ -552,6 +783,464 @@
                 });
             }
         },
+        
+        /**
+         * Initialize taxonomy fields with search and selection behavior
+         */
+        initTaxonomyFields: function() {
+            var self = this;
+            
+            // Handle taxonomy search
+            $(document).on('input', '.wpfe-taxonomy-search-input', function() {
+                var $field = $(this).closest('.wpfe-editor-taxonomy-field');
+                var searchText = $(this).val().toLowerCase();
+                
+                // If empty search, show all items
+                if (!searchText) {
+                    $field.find('.wpfe-taxonomy-item').show();
+                    return;
+                }
+                
+                // Filter items based on search text
+                $field.find('.wpfe-taxonomy-item').each(function() {
+                    var termName = $(this).find('label').text().toLowerCase();
+                    if (termName.indexOf(searchText) !== -1) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            });
+            
+            // Handle checkbox changes to update the hidden input value
+            $(document).on('change', '.wpfe-taxonomy-checkbox', function() {
+                var $field = $(this).closest('.wpfe-editor-taxonomy-field');
+                var $hiddenInput = $field.find('input[type="hidden"]');
+                var selectedValues = [];
+                
+                // Get all checked checkboxes
+                $field.find('.wpfe-taxonomy-checkbox:checked').each(function() {
+                    selectedValues.push(parseInt($(this).val(), 10));
+                });
+                
+                // Update the hidden input value
+                $hiddenInput.val(JSON.stringify(selectedValues));
+                
+                // If live preview is enabled, update the display
+                if (wpfe_data.live_preview) {
+                    // Implementation would depend on how taxonomies are displayed in the theme
+                    // This is a simple approach - in practice, you might want to refresh the category/tag list display
+                }
+            });
+            
+            // Initialize relationship fields
+            this.initRelationshipFields();
+            
+            // Initialize gallery fields
+            this.initGalleryFields();
+        },
+        
+        /**
+         * Initialize relationship fields with search and selection functionality
+         */
+        initRelationshipFields: function() {
+            var self = this;
+            
+            // Handle relationship field search
+            $(document).on('input', '.wpfe-relationship-search-input', function() {
+                var $field = $(this).closest('.wpfe-editor-relationship-field');
+                var searchText = $(this).val().toLowerCase();
+                
+                // If empty search, show all items
+                if (!searchText) {
+                    $field.find('.wpfe-relationship-available-items .wpfe-relationship-item').show();
+                    return;
+                }
+                
+                // Filter items based on search text
+                $field.find('.wpfe-relationship-available-items .wpfe-relationship-item').each(function() {
+                    var itemText = $(this).find('.wpfe-relationship-item-title').text().toLowerCase();
+                    if (itemText.indexOf(searchText) !== -1) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            });
+            
+            // Handle relationship add button click
+            $(document).on('click', '.wpfe-relationship-add-button', function() {
+                var $item = $(this).closest('.wpfe-relationship-item');
+                var postId = $item.data('id');
+                var $field = $(this).closest('.wpfe-editor-relationship-field');
+                var $selectedContainer = $field.find('.wpfe-relationship-selected-items');
+                var $hiddenInput = $field.find('input[type="hidden"]');
+                var multiple = $field.data('multiple') === true;
+                var maxItems = parseInt($field.data('max'), 10) || 0;
+                
+                // Check if we've hit the maximum number of items (if set)
+                if (maxItems > 0) {
+                    var currentCount = $selectedContainer.find('.wpfe-relationship-item').length;
+                    if (currentCount >= maxItems) {
+                        alert('Maximum number of items selected (' + maxItems + ')');
+                        return;
+                    }
+                }
+                
+                // Clone the item and change button to remove
+                var $clonedItem = $item.clone();
+                $clonedItem.find('.wpfe-relationship-add-button')
+                    .removeClass('wpfe-relationship-add-button')
+                    .addClass('wpfe-relationship-remove-button')
+                    .find('.dashicons')
+                    .removeClass('dashicons-plus')
+                    .addClass('dashicons-minus');
+                
+                // Add to selected container
+                $selectedContainer.append($clonedItem);
+                
+                // If not multiple, hide the original item
+                if (!multiple) {
+                    $item.hide();
+                }
+                
+                // Update the hidden input with selected values
+                self.updateRelationshipValues($field);
+            });
+            
+            // Handle relationship remove button click
+            $(document).on('click', '.wpfe-relationship-remove-button', function() {
+                var $item = $(this).closest('.wpfe-relationship-item');
+                var postId = $item.data('id');
+                var $field = $(this).closest('.wpfe-editor-relationship-field');
+                var multiple = $field.data('multiple') === true;
+                
+                // Remove the item
+                $item.remove();
+                
+                // If not multiple, show the original item again
+                if (!multiple) {
+                    $field.find('.wpfe-relationship-available-items .wpfe-relationship-item[data-id="' + postId + '"]').show();
+                }
+                
+                // Update the hidden input with selected values
+                self.updateRelationshipValues($field);
+            });
+            
+            // Initialize sortable for relationship selected items (jQuery UI sortable)
+            if ($.fn.sortable) {
+                // Only initialize if there are relationship items
+                var $relationshipContainers = $('.wpfe-relationship-selected-items');
+                if ($relationshipContainers.length > 0) {
+                    try {
+                        $relationshipContainers.sortable({
+                            update: function(event, ui) {
+                                // Update values when items are reordered
+                                var $field = $(this).closest('.wpfe-editor-relationship-field');
+                                self.updateRelationshipValues($field);
+                            },
+                            placeholder: 'wpfe-relationship-sortable-placeholder',
+                            forcePlaceholderSize: true,
+                            cancel: 'button' // Prevent starting drag on buttons
+                        });
+                    } catch (e) {
+                        if (wpfe_data.debug_mode) {
+                            console.error('Error initializing sortable for relationship fields:', e);
+                        }
+                    }
+                }
+            }
+        },
+        
+        /**
+         * Initialize gallery fields with sorting and add/remove functionality
+         */
+        initGalleryFields: function() {
+            var self = this;
+            
+            // Initialize sortable for gallery items
+            if ($.fn.sortable) {
+                // Only initialize sortable if gallery items exist
+                var $galleries = $('.wpfe-sortable-gallery');
+                if ($galleries.length > 0) {
+                    try {
+                        $galleries.sortable({
+                            placeholder: 'wpfe-gallery-placeholder',
+                            forcePlaceholderSize: true,
+                            tolerance: 'pointer',
+                            cursor: 'move',
+                            update: function(event, ui) {
+                                // Update the hidden input with the new order
+                                var $gallery = $(this);
+                                var $field = $gallery.closest('.wpfe-editor-gallery-field');
+                                self.updateGalleryValues($field);
+                            }
+                        });
+                    } catch (e) {
+                        if (wpfe_data.debug_mode) {
+                            console.error('Error initializing sortable for galleries:', e);
+                        }
+                    }
+                }
+            }
+            
+            // Handle add images button click
+            $(document).on('click', '.wpfe-gallery-add', function() {
+                var $field = $(this).closest('.wpfe-editor-gallery-field');
+                var fieldName = $field.find('input[type="hidden"]').attr('name');
+                
+                self.openGalleryMedia(fieldName);
+            });
+            
+            // Handle remove image button click
+            $(document).on('click', '.wpfe-gallery-item-remove', function() {
+                var $item = $(this).closest('.wpfe-gallery-item');
+                var $field = $item.closest('.wpfe-editor-gallery-field');
+                
+                // Remove the item
+                $item.remove();
+                
+                // Update gallery values
+                self.updateGalleryValues($field);
+            });
+        },
+        
+        /**
+         * Fetch gallery image data for images that don't have URLs
+         * 
+         * @param {string} fieldName The field name
+         * @param {Array} imageIds Array of image IDs to fetch
+         */
+        fetchGalleryImageData: function(fieldName, imageIds) {
+            var self = this;
+            
+            if (!imageIds || !imageIds.length) {
+                return;
+            }
+            
+            // Make AJAX request to get image data
+            $.ajax({
+                url: wpfe_data.ajax_url,
+                method: 'GET',
+                data: {
+                    action: 'wpfe_get_gallery_data',
+                    nonce: wpfe_data.nonce,
+                    attachment_ids: JSON.stringify(imageIds)
+                },
+                success: function(response) {
+                    if (response.success && response.data.images) {
+                        var $field = $('.wpfe-editor-field[data-field-name="' + fieldName + '"]');
+                        var $gallery = $field.find('.wpfe-gallery-preview');
+                        
+                        // Process each image
+                        response.data.images.forEach(function(image) {
+                            // Check if we already have this image in the gallery
+                            var $existingItem = $gallery.find('.wpfe-gallery-item[data-id="' + image.id + '"]');
+                            
+                            if ($existingItem.length === 0) {
+                                // Create new gallery item
+                                var itemHtml = self.templates.galleryItem
+                                    .replace(/{image_id}/g, image.id)
+                                    .replace(/{image_url}/g, image.thumbnail_url);
+                                
+                                $gallery.append(itemHtml);
+                            } else {
+                                // Update existing item
+                                $existingItem.find('img').attr('src', image.thumbnail_url);
+                            }
+                        });
+                        
+                        // If sortable is available, refresh it
+                        if ($.fn.sortable && $gallery.hasClass('ui-sortable')) {
+                            $gallery.sortable('refresh');
+                        }
+                    }
+                },
+                error: function() {
+                    if (wpfe_data.debug_mode) {
+                        console.error('Failed to fetch gallery image data for field:', fieldName);
+                    }
+                }
+            });
+        },
+        
+        /**
+         * Open the WordPress media library for gallery selection
+         * 
+         * @param {string} fieldName The field name
+         */
+        openGalleryMedia: function(fieldName) {
+            var self = this;
+            
+            // Get current gallery values
+            var $field = $('.wpfe-editor-gallery-field').filter(function() {
+                return $(this).find('input[type="hidden"]').attr('name') === fieldName;
+            });
+            
+            var $hiddenInput = $field.find('input[type="hidden"]');
+            var currentValue = $hiddenInput.val();
+            var currentSelection = [];
+            
+            // Parse current value
+            try {
+                currentSelection = JSON.parse(currentValue);
+                if (!Array.isArray(currentSelection)) {
+                    currentSelection = [];
+                }
+            } catch (e) {
+                currentSelection = [];
+            }
+            
+            // Create the media frame
+            var galleryFrame = wp.media({
+                title: wpfe_data.i18n.select_gallery_images || 'Select Gallery Images',
+                multiple: true,
+                library: {
+                    type: 'image'
+                },
+                button: {
+                    text: wpfe_data.i18n.add_to_gallery || 'Add to Gallery'
+                }
+            });
+            
+            // Set selected images if we have current values
+            if (currentSelection.length > 0 && galleryFrame.state().get('selection')) {
+                var selection = galleryFrame.state().get('selection');
+                
+                currentSelection.forEach(function(attachmentId) {
+                    var attachment = wp.media.attachment(attachmentId);
+                    attachment.fetch();
+                    selection.add(attachment ? [attachment] : []);
+                });
+            }
+            
+            // When images are selected
+            galleryFrame.on('select', function() {
+                var selection = galleryFrame.state().get('selection');
+                var $galleryPreview = $field.find('.wpfe-gallery-preview');
+                var newGalleryItems = [];
+                
+                // Clear existing items if replacing the gallery
+                if (!wpfe_data.gallery_append) {
+                    $galleryPreview.empty();
+                    newGalleryItems = [];
+                } else {
+                    // Get existing IDs if appending
+                    $galleryPreview.find('.wpfe-gallery-item').each(function() {
+                        newGalleryItems.push(parseInt($(this).data('id'), 10));
+                    });
+                }
+                
+                // Add selected images
+                selection.forEach(function(attachment) {
+                    attachment = attachment.toJSON();
+                    
+                    // Skip if image already exists in gallery
+                    if (newGalleryItems.indexOf(attachment.id) !== -1) {
+                        return;
+                    }
+                    
+                    // Add image ID to array
+                    newGalleryItems.push(attachment.id);
+                    
+                    // Create gallery item element
+                    var itemHtml = self.templates.galleryItem
+                        .replace(/{image_id}/g, attachment.id)
+                        .replace(/{image_url}/g, attachment.sizes.thumbnail ? attachment.sizes.thumbnail.url : attachment.url);
+                    
+                    // Append to gallery preview
+                    $galleryPreview.append(itemHtml);
+                });
+                
+                // Update the hidden input value
+                $hiddenInput.val(JSON.stringify(newGalleryItems));
+            });
+            
+            // Open the media library
+            galleryFrame.open();
+        },
+        
+        /**
+         * Update the hidden input with the current gallery items
+         * 
+         * @param {jQuery} $field The gallery field container
+         */
+        updateGalleryValues: function($field) {
+            var $galleryItems = $field.find('.wpfe-gallery-item');
+            var $hiddenInput = $field.find('input[type="hidden"]');
+            var galleryValues = [];
+            
+            // Get all gallery item IDs in the current order
+            $galleryItems.each(function() {
+                galleryValues.push(parseInt($(this).data('id'), 10));
+            });
+            
+            // Update the hidden input
+            $hiddenInput.val(JSON.stringify(galleryValues));
+            
+            // If live preview is enabled, try to update the display
+            if (wpfe_data.live_preview) {
+                var fieldName = $field.closest('.wpfe-editor-field').data('field-name');
+                var $element = $('[data-wpfe-field="' + fieldName + '"]');
+                
+                if ($element.length) {
+                    // Simply reorder the existing gallery images if possible
+                    var $galleryContainer = $element.find('.gallery, .wp-block-gallery, .acf-gallery');
+                    
+                    if ($galleryContainer.length) {
+                        var $items = $galleryContainer.find('.gallery-item, .blocks-gallery-item, .acf-gallery-attachment');
+                        
+                        // Only try to reorder if we have the same number of items
+                        if ($items.length === galleryValues.length) {
+                            var $reorderedItems = $();
+                            
+                            // Reorder based on the new order
+                            galleryValues.forEach(function(id) {
+                                var $item = $items.filter(function() {
+                                    return $(this).find('img').data('id') == id || 
+                                           $(this).data('id') == id ||
+                                           $(this).find('img').attr('data-attachment-id') == id;
+                                });
+                                
+                                if ($item.length) {
+                                    $reorderedItems = $reorderedItems.add($item);
+                                }
+                            });
+                            
+                            // Replace with reordered items if we found matches for all
+                            if ($reorderedItems.length === $items.length) {
+                                $items.detach();
+                                $galleryContainer.append($reorderedItems);
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        
+        /**
+         * Update the hidden input with the current selection of relationship items
+         * 
+         * @param {jQuery} $field The relationship field container
+         */
+        updateRelationshipValues: function($field) {
+            var $hiddenInput = $field.find('input[type="hidden"]');
+            var selectedValues = [];
+            var multiple = $field.data('multiple') === true;
+            
+            // Get all selected item IDs
+            $field.find('.wpfe-relationship-selected-items .wpfe-relationship-item').each(function() {
+                selectedValues.push(parseInt($(this).data('id'), 10));
+            });
+            
+            // If not multiple and we have a value, just use the first one
+            if (!multiple && selectedValues.length > 0) {
+                $hiddenInput.val(selectedValues[0]);
+            } else {
+                // Otherwise set the JSON array
+                $hiddenInput.val(JSON.stringify(selectedValues));
+            }
+        },
 
         /**
          * Save changes to the server.
@@ -573,6 +1262,16 @@
                             value = wp.editor.getContent('wpfe-field-' + fieldName);
                         } else {
                             value = $('#wpfe-field-' + fieldName).val();
+                        }
+                        break;
+                        
+                    case 'taxonomy':
+                        // Parse the JSON stored in the hidden input
+                        var taxValue = $('#wpfe-field-' + fieldName).val();
+                        try {
+                            value = JSON.parse(taxValue);
+                        } catch (e) {
+                            value = [];
                         }
                         break;
                         
@@ -886,7 +1585,25 @@
 
     // Initialize when the DOM is ready
     $(document).ready(function() {
-        wpfe.init();
+        // Safely initialize the editor
+        try {
+            wpfe.init();
+        } catch (e) {
+            console.error('Error initializing WP Frontend Editor:', e);
+        }
+        
+        // Add safety checks for other scripts that might depend on our editor
+        // This fixes the "Cannot read properties of undefined (reading 'instance')" error
+        $(window).on('load', function() {
+            // Ensure jQuery UI sortable is properly initialized
+            if ($.fn.sortable && $('.wpfe-sortable-gallery').length) {
+                try {
+                    $('.wpfe-sortable-gallery').sortable('refresh');
+                } catch (e) {
+                    // Ignore errors, just a safety measure
+                }
+            }
+        });
     });
 
     // Expose the wpfe object globally

@@ -66,3 +66,83 @@ if ( ! defined( 'ABSPATH' ) ) {
         <button type="button" class="button wpfe-editor-image-remove" style="display: {remove_display};"><?php esc_html_e( 'Remove Image', 'wp-frontend-editor' ); ?></button>
     </div>
 </script>
+
+<script type="text/template" id="wpfe-editor-gallery-template">
+    <div class="wpfe-editor-gallery-field">
+        <div class="wpfe-gallery-preview wpfe-sortable-gallery">
+            {gallery_items}
+        </div>
+        <input type="hidden" id="wpfe-field-{field_name}" name="{field_name}" value="{field_value}" class="wpfe-editor-input">
+        <div class="wpfe-gallery-buttons">
+            <button type="button" class="button wpfe-gallery-add"><?php esc_html_e( 'Add Images', 'wp-frontend-editor' ); ?></button>
+        </div>
+    </div>
+</script>
+
+<script type="text/template" id="wpfe-editor-gallery-item-template">
+    <div class="wpfe-gallery-item" data-id="{image_id}">
+        <img src="{image_url}" alt="">
+        <div class="wpfe-gallery-item-actions">
+            <button type="button" class="wpfe-gallery-item-remove" aria-label="<?php esc_attr_e( 'Remove image', 'wp-frontend-editor' ); ?>">
+                <span class="dashicons dashicons-no-alt"></span>
+            </button>
+        </div>
+    </div>
+</script>
+
+<script type="text/template" id="wpfe-editor-taxonomy-template">
+    <div class="wpfe-editor-taxonomy-field" data-taxonomy="{taxonomy}" data-hierarchical="{hierarchical}">
+        <div class="wpfe-taxonomy-search">
+            <input type="text" class="wpfe-taxonomy-search-input" placeholder="<?php esc_attr_e( 'Search...', 'wp-frontend-editor' ); ?>">
+        </div>
+        <div class="wpfe-taxonomy-items">
+            {taxonomy_items}
+        </div>
+        <input type="hidden" id="wpfe-field-{field_name}" name="{field_name}" value="{field_value}" class="wpfe-editor-input">
+    </div>
+</script>
+
+<script type="text/template" id="wpfe-editor-taxonomy-item-template">
+    <div class="wpfe-taxonomy-item" style="padding-left: {indent}px;">
+        <label>
+            <input type="{input_type}" class="wpfe-taxonomy-checkbox" name="taxonomy_{taxonomy}[]" value="{term_id}" {checked}>
+            {term_name} <span class="wpfe-term-count">({term_count})</span>
+        </label>
+    </div>
+</script>
+
+<script type="text/template" id="wpfe-editor-relationship-template">
+    <div class="wpfe-editor-relationship-field" data-max="{max}" data-min="{min}" data-multiple="{multiple}">
+        <div class="wpfe-relationship-search">
+            <input type="text" class="wpfe-relationship-search-input" placeholder="<?php esc_attr_e( 'Search posts...', 'wp-frontend-editor' ); ?>">
+        </div>
+        
+        <div class="wpfe-relationship-wrapper">
+            <div class="wpfe-relationship-available">
+                <h3><?php esc_html_e( 'Available items', 'wp-frontend-editor' ); ?></h3>
+                <div class="wpfe-relationship-available-items">
+                    {available_items}
+                </div>
+            </div>
+            
+            <div class="wpfe-relationship-selected">
+                <h3><?php esc_html_e( 'Selected items', 'wp-frontend-editor' ); ?></h3>
+                <div class="wpfe-relationship-selected-items" id="wpfe-relationship-selected-{field_name}">
+                    {selected_items}
+                </div>
+            </div>
+        </div>
+        
+        <input type="hidden" id="wpfe-field-{field_name}" name="{field_name}" value="{field_value}" class="wpfe-editor-input">
+    </div>
+</script>
+
+<script type="text/template" id="wpfe-editor-relationship-item-template">
+    <div class="wpfe-relationship-item" data-id="{post_id}">
+        <div class="wpfe-relationship-item-title">{post_title}</div>
+        <div class="wpfe-relationship-item-meta">{post_type} &bull; {post_date}</div>
+        <button type="button" class="wpfe-relationship-{button_type}-button" data-id="{post_id}">
+            <span class="dashicons dashicons-{button_icon}"></span>
+        </button>
+    </div>
+</script>
