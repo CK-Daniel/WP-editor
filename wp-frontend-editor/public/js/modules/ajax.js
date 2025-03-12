@@ -173,8 +173,8 @@ WPFE.ajax = (function($) {
          * @param {Function} callback The callback function
          */
         fetchField: function(fieldName, postId, callback) {
-            queueRequest('wpfe_get_field', {
-                field: fieldName,
+            queueRequest('wpfe_get_fields', {
+                field_names: fieldName,
                 post_id: postId
             }, callback, true);
         },
@@ -231,10 +231,11 @@ WPFE.ajax = (function($) {
          * @param {Function} callback The callback function
          */
         saveFieldChange: function(fieldName, postId, value, callback) {
-            queueRequest('wpfe_save_field', {
-                field: fieldName,
+            queueRequest('wpfe_save_fields', {
                 post_id: postId,
-                value: value
+                fields: {
+                    [fieldName]: value
+                }
             }, callback, true);
         },
         
