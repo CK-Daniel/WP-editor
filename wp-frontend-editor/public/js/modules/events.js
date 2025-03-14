@@ -128,9 +128,29 @@ WPFE.events = (function($) {
             
             // Show the sidebar with animation and fallback
             try {
-                sidebar.addClass('wpfe-sidebar-active').css('display', 'flex');
+                // Make sure to clear any transform and display properly
+                sidebar.addClass('wpfe-sidebar-active')
+                      .addClass('is-active')
+                      .css({
+                          'display': 'flex',
+                          'transform': 'none',
+                          'opacity': '1',
+                          'visibility': 'visible'
+                      })
+                      .show();
+                
+                // Debug sidebar visibility
+                console.log('Sidebar visibility state:', {
+                    'is-visible': sidebar.is(':visible'),
+                    'display': sidebar.css('display'),
+                    'width': sidebar.css('width'),
+                    'height': sidebar.css('height'),
+                    'right': sidebar.css('right'),
+                    'transform': sidebar.css('transform'),
+                    'z-index': sidebar.css('z-index')
+                });
             } catch (e) {
-                sidebar.addClass('wpfe-sidebar-active').show();
+                sidebar.addClass('wpfe-sidebar-active').addClass('is-active').show();
                 console.warn('Sidebar animation failed, using direct show() method');
             }
             

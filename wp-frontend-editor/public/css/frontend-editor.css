@@ -279,7 +279,8 @@
     font-family: var(--wpfe-font-family) !important;
 }
 
-.wpfe-editor-sidebar.is-active {
+.wpfe-editor-sidebar.is-active,
+.wpfe-editor-sidebar.wpfe-sidebar-active {
     transform: translateX(0) !important;
 }
 
@@ -292,7 +293,8 @@
     box-shadow: 2px 0 30px var(--wpfe-shadow) !important;
 }
 
-.wpfe-editor-sidebar.position-left.is-active {
+.wpfe-editor-sidebar.position-left.is-active,
+.wpfe-editor-sidebar.position-left.wpfe-sidebar-active {
     transform: translateX(0) !important;
 }
 

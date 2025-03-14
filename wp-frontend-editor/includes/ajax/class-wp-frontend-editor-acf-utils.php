@@ -103,6 +103,8 @@ class WP_Frontend_Editor_ACF_Utils {
     /**
      * Find a field in subfields recursively.
      * 
+     * Enhanced version that supports more complex ACF field structures.
+     * 
      * @since 1.0.0
      * @param array $field The parent field
      * @param string $field_name The field name to search for
@@ -117,35 +119,75 @@ class WP_Frontend_Editor_ACF_Utils {
         
         // Check for subfields in different field types
         if ( isset( $field['type'] ) ) {
+            // Handle direct match first
+            if ( isset( $field['name'] ) && $field['name'] === $field_name ) {
+                return $field;
+            }
+            
+            // Check for any field type that might contain subfields
+            if ( isset( $field['sub_fields'] ) && is_array( $field['sub_fields'] ) ) {
+                // Field types like repeater, group, clone, etc.
+                foreach ( $field['sub_fields'] as $sub_field ) {
+                    if ( isset( $sub_field['name'] ) && $sub_field['name'] === $field_name ) {
+                        return $sub_field;
+                    }
+                    
+                    // Recursively check nested subfields
+                    $nested_field = $this->find_field_in_subfields( $sub_field, $field_name, $recursion_depth + 1 );
+                    if ( $nested_field ) {
+                        return $nested_field;
+                    }
+                }
+            }
+            
+            // Handle specific field types with different storage structures
             switch ( $field['type'] ) {
                 case 'repeater':
                 case 'group':
-                    if ( isset( $field['sub_fields'] ) && is_array( $field['sub_fields'] ) ) {
-                        foreach ( $field['sub_fields'] as $sub_field ) {
-                            if ( $sub_field['name'] === $field_name ) {
-                                return $sub_field;
-                            }
-                            
-                            // Recursively check nested subfields
-                            $nested_field = $this->find_field_in_subfields( $sub_field, $field_name, $recursion_depth + 1 );
-                            if ( $nested_field ) {
-                                return $nested_field;
-                            }
-                        }
-                    }
+                    // Already handled above, but may need special processing in the future
                     break;
                     
                 case 'flexible_content':
                     if ( isset( $field['layouts'] ) && is_array( $field['layouts'] ) ) {
                         foreach ( $field['layouts'] as $layout ) {
+                            // Check layout name directly (rare but possible case)
+                            if ( isset( $layout['name'] ) && $layout['name'] === $field_name ) {
+                                return $layout;
+                            }
+                            
+                            // Check layout sub_fields
                             if ( isset( $layout['sub_fields'] ) && is_array( $layout['sub_fields'] ) ) {
                                 foreach ( $layout['sub_fields'] as $sub_field ) {
-                                    if ( $sub_field['name'] === $field_name ) {
+                                    if ( isset( $sub_field['name'] ) && $sub_field['name'] === $field_name ) {
                                         return $sub_field;
                                     }
                                     
                                     // Recursively check nested subfields
                                     $nested_field = $this->find_field_in_subfields( $sub_field, $field_name, $recursion_depth + 1 );
+                                    if ( $nested_field ) {
+                                        return $nested_field;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+                    
+                case 'clone':
+                    // Clone fields can have nested sub_fields as well
+                    if ( isset( $field['clone'] ) && is_array( $field['clone'] ) ) {
+                        // In some cases, the cloned fields are directly accessible
+                        foreach ( $field['clone'] as $cloned_field_key ) {
+                            // Try to get the actual cloned field
+                            if ( function_exists( 'acf_get_field' ) ) {
+                                $cloned_field = acf_get_field( $cloned_field_key );
+                                if ( $cloned_field ) {
+                                    if ( isset( $cloned_field['name'] ) && $cloned_field['name'] === $field_name ) {
+                                        return $cloned_field;
+                                    }
+                                    
+                                    // Recursively check cloned field
+                                    $nested_field = $this->find_field_in_subfields( $cloned_field, $field_name, $recursion_depth + 1 );
                                     if ( $nested_field ) {
                                         return $nested_field;
                                     }

@@ -64,8 +64,9 @@ function wpfe_activate() {
     if ( class_exists( 'WP_Frontend_Editor_Logger' ) ) {
         $logger = new WP_Frontend_Editor_Logger();
         $logger->create_log_table();
-        5     // Log plugin activation
-        wpfe_log( 'Plugin activated', 'info', array(
+        
+        // Log plugin activation directly using the logger instance
+        $logger->info( 'Plugin activated', array(
             'version' => WPFE_VERSION,
             'user_id' => get_current_user_id()
         ));

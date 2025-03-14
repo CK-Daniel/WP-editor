@@ -16,21 +16,48 @@ WPFE.acf = (function($) {
 
     // Private variables
     var acfFieldTypes = {
+        // Basic field types
         text: 'text',
         textarea: 'textarea',
         wysiwyg: 'wysiwyg',
+        number: 'number',
+        email: 'email',
+        url: 'url',
+        password: 'password',
+        
+        // Content field types
         image: 'image',
         gallery: 'gallery',
         file: 'file',
+        
+        // Choice field types
         select: 'select',
         checkbox: 'checkbox',
         radio: 'radio',
+        button_group: 'button_group',
         true_false: 'true_false',
+        
+        // jQuery field types
         date_picker: 'date_picker',
+        date_time_picker: 'date_time_picker',
+        time_picker: 'time_picker',
         color_picker: 'color_picker',
+        
+        // Relational field types
         link: 'link',
+        post_object: 'post_object',
+        page_link: 'page_link',
+        relationship: 'relationship',
+        taxonomy: 'taxonomy',
+        user: 'user',
+        
+        // Layout field types (special handling needed)
+        message: 'message',
+        tab: 'tab',
+        group: 'group',
         repeater: 'repeater',
-        flexible_content: 'flexible_content'
+        flexible_content: 'flexible_content',
+        clone: 'clone'
     };
     
     // Private functions
@@ -185,15 +212,57 @@ WPFE.acf = (function($) {
             // Update data attribute
             $row.attr('data-index', index);
             
-            // Update all input names
+            // Update all input names with proper nested handling
             $row.find('input, select, textarea').each(function() {
                 var $input = $(this);
                 var name = $input.attr('name');
                 
                 if (name) {
-                    name = name.replace(/\[\d+\]/, '[' + index + ']');
+                    // Get the direct parent repeater name path
+                    var parentRepeaterPath = '';
+                    var $parentRepeater = $row.closest('.wpfe-acf-repeater');
+                    
+                    if ($parentRepeater.length) {
+                        // Extract current row pattern from name - looking for the one we need to update
+                        var rowPatterns = name.match(/\[\d+\]/g);
+                        
+                        // If we have row indices, we need to track which one needs updating
+                        if (rowPatterns && rowPatterns.length) {
+                            // The row pattern we need to update is the one at the depth that matches our $row
+                            // Start by getting all parent repeaters
+                            var $allParentRepeaters = $input.parents('.wpfe-acf-repeater');
+                            var targetDepth = $allParentRepeaters.length - $allParentRepeaters.index($parentRepeater) - 1;
+                            
+                            // We know which depth we need to update, so we need to replace that specific pattern
+                            if (targetDepth >= 0 && targetDepth < rowPatterns.length) {
+                                // Create a regex that matches the exact pattern at the right position
+                                var parts = name.split(rowPatterns[targetDepth]);
+                                
+                                // Replace the pattern
+                                name = parts[0] + '[' + index + ']' + (parts[1] || '');
+                            } else {
+                                // Fallback to simple replace (first occurrence only) if depth calculation fails
+                                name = name.replace(/\[\d+\]/, '[' + index + ']');
+                            }
+                        } else {
+                            // Simple case - no nested repeaters
+                            name = name.replace(/\[\d+\]/, '[' + index + ']');
+                        }
+                    } else {
+                        // Simple case - no parent repeater
+                        name = name.replace(/\[\d+\]/, '[' + index + ']');
+                    }
+                    
                     $input.attr('name', name);
                 }
+            });
+            
+            // Also update row order display
+            $row.find('.wpfe-acf-repeater-row-order').text(index);
+            
+            // Handle nested repeaters - recursively reindex child repeaters
+            $row.find('.wpfe-acf-repeater-rows').each(function() {
+                reindexRepeaterRows($(this));
             });
         });
     }
@@ -210,15 +279,61 @@ WPFE.acf = (function($) {
             // Update data attribute
             $layout.attr('data-index', index);
             
-            // Update all input names
+            // Update all input names with proper nested handling
             $layout.find('input, select, textarea').each(function() {
                 var $input = $(this);
                 var name = $input.attr('name');
                 
                 if (name) {
-                    name = name.replace(/\[\d+\]/, '[' + index + ']');
+                    // Get the direct parent flexible content
+                    var $parentFC = $layout.closest('.wpfe-acf-flexible-content');
+                    
+                    if ($parentFC.length) {
+                        // Extract current layout pattern from name - looking for the one we need to update
+                        var layoutPatterns = name.match(/\[\d+\]/g);
+                        
+                        // If we have layout indices, we need to track which one needs updating
+                        if (layoutPatterns && layoutPatterns.length) {
+                            // The layout pattern we need to update is the one at the depth that matches our $layout
+                            // Start by getting all parent flexible content fields
+                            var $allParentFCs = $input.parents('.wpfe-acf-flexible-content');
+                            var targetDepth = $allParentFCs.length - $allParentFCs.index($parentFC) - 1;
+                            
+                            // We know which depth we need to update, so we need to replace that specific pattern
+                            if (targetDepth >= 0 && targetDepth < layoutPatterns.length) {
+                                // Create a regex that matches the exact pattern at the right position
+                                var parts = name.split(layoutPatterns[targetDepth]);
+                                
+                                // Replace the pattern
+                                name = parts[0] + '[' + index + ']' + (parts[1] || '');
+                            } else {
+                                // Fallback to simple replace (first occurrence only) if depth calculation fails
+                                name = name.replace(/\[\d+\]/, '[' + index + ']');
+                            }
+                        } else {
+                            // Simple case - no nested flexible content
+                            name = name.replace(/\[\d+\]/, '[' + index + ']');
+                        }
+                    } else {
+                        // Simple case - no parent flexible content
+                        name = name.replace(/\[\d+\]/, '[' + index + ']');
+                    }
+                    
                     $input.attr('name', name);
                 }
+            });
+            
+            // Also update layout order display
+            $layout.find('.wpfe-acf-fc-layout-order').text(index);
+            
+            // Handle nested flexible content - recursively reindex child layouts
+            $layout.find('.wpfe-acf-fc-layouts').each(function() {
+                reindexFlexibleLayouts($(this));
+            });
+            
+            // Also handle repeaters inside flexible content
+            $layout.find('.wpfe-acf-repeater-rows').each(function() {
+                reindexRepeaterRows($(this));
             });
         });
     }
@@ -265,13 +380,23 @@ WPFE.acf = (function($) {
             case acfFieldTypes.link:
                 return renderAcfLinkField(fieldData);
                 
+            case acfFieldTypes.group:
+                return renderAcfGroupField(fieldData);
+                
             case acfFieldTypes.repeater:
                 return renderAcfRepeaterField(fieldData);
                 
             case acfFieldTypes.flexible_content:
                 return renderAcfFlexibleContentField(fieldData);
                 
+            case acfFieldTypes.clone:
+                return renderAcfCloneField(fieldData);
+                
             default:
+                // For unknown field types, log but still return null
+                if (wpfe_data.debug_mode) {
+                    console.debug('Unknown or unsupported ACF field type:', fieldData.type, fieldData);
+                }
                 return null;
         }
     }
@@ -602,7 +727,7 @@ WPFE.acf = (function($) {
             
             // Add subfields
             for (var i = 0; i < fieldData.sub_fields.length; i++) {
-                var subField = fieldData.sub_fields[i];
+                var subField = JSON.parse(JSON.stringify(fieldData.sub_fields[i])); // Deep clone
                 subField.name = fieldData.name + '[{i}][' + subField.key + ']';
                 
                 // Empty value for the template
@@ -636,11 +761,68 @@ WPFE.acf = (function($) {
                 
                 // Add subfields with values
                 for (var k = 0; k < fieldData.sub_fields.length; k++) {
-                    var valueSubField = fieldData.sub_fields[k];
+                    var valueSubField = JSON.parse(JSON.stringify(fieldData.sub_fields[k])); // Deep clone
                     valueSubField.name = fieldData.name + '[' + j + '][' + valueSubField.key + ']';
                     
-                    // Get value from row values
-                    valueSubField.value = rowValues[valueSubField.key] || '';
+                    // Get value from row values with enhanced robust fallbacks
+                    if (rowValues && typeof rowValues === 'object') {
+                        valueSubField.parent_type = 'repeater';
+                        valueSubField.parent_field = fieldData.name;
+                        valueSubField.row_index = j;
+                        
+                        // Try all possible key formats ACF might use
+                        var possibleKeys = [
+                            valueSubField.key,                              // Direct field key (field_xxx)
+                            valueSubField.name,                             // Full field name path
+                            valueSubField.key.replace('field_', ''),        // ACF sometimes strips field_ prefix
+                            valueSubField.name.split('[').pop().split(']')[0], // Last segment of name
+                            valueSubField.name.split('_').pop(),            // Last part after underscore
+                            valueSubField.name.replace(/[\[\]']+/g, '')     // Name with brackets removed
+                        ];
+                        
+                        // For nested field names, try the last segment
+                        if (valueSubField.name.includes('[')) {
+                            var lastSegmentMatch = valueSubField.name.match(/\[([^\]]+)\]$/);
+                            if (lastSegmentMatch && lastSegmentMatch[1]) {
+                                possibleKeys.push(lastSegmentMatch[1]);
+                            }
+                        }
+                        
+                        // Try each possible key
+                        var valueFound = false;
+                        for (var ki = 0; ki < possibleKeys.length; ki++) {
+                            var testKey = possibleKeys[ki];
+                            if (testKey && rowValues[testKey] !== undefined) {
+                                valueSubField.value = rowValues[testKey];
+                                valueFound = true;
+                                break;
+                            }
+                        }
+                        
+                        // If still not found, check if value exists in a nested 'value' property
+                        if (!valueFound && rowValues.value && 
+                            typeof rowValues.value === 'object') {
+                            // Try the same keys but in the value object
+                            for (var kj = 0; kj < possibleKeys.length; kj++) {
+                                var testValueKey = possibleKeys[kj];
+                                if (testValueKey && rowValues.value[testValueKey] !== undefined) {
+                                    valueSubField.value = rowValues.value[testValueKey];
+                                    valueFound = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // Final fallback - set to empty
+                        if (!valueFound) {
+                            valueSubField.value = '';
+                            if (wpfe_data.debug_mode) {
+                                console.debug('No value found for field', valueSubField.key, 'in repeater row', j);
+                            }
+                        }
+                    } else {
+                        valueSubField.value = '';
+                    }
                     
                     // Render subfield
                     var valueSubFieldHtml = renderAcfField(valueSubField);
@@ -661,8 +843,9 @@ WPFE.acf = (function($) {
         html += '<button type="button" class="wpfe-acf-repeater-add"><span class="dashicons dashicons-plus"></span> Add Row</button>';
         html += '</div>';
         
-        // Store row template for JavaScript use
-        html += '<script type="text/template" class="wpfe-acf-repeater-template" data-row-template="' + rowTemplate + '"></script>';
+        // Safely encode the row template to avoid JS errors
+        var safeRowTemplate = rowTemplate.replace(/"/g, '&quot;');
+        html += '<script type="text/template" class="wpfe-acf-repeater-template" data-row-template="' + safeRowTemplate + '"></script>';
         
         // Add description
         if (fieldData.description) {
@@ -712,8 +895,8 @@ WPFE.acf = (function($) {
                     // Add subfields
                     if (layout.sub_fields) {
                         for (var i = 0; i < layout.sub_fields.length; i++) {
-                            var subField = layout.sub_fields[i];
-                            subField.name = fieldData.name + '[{i}][' + layout.key + '][' + subField.key + ']';
+                            var subField = JSON.parse(JSON.stringify(layout.sub_fields[i])); // Deep clone
+                            subField.name = fieldData.name + '[{i}][' + layoutName + '][' + subField.key + ']';
                             
                             // Empty value for the template
                             subField.value = '';
@@ -729,8 +912,9 @@ WPFE.acf = (function($) {
                     layoutTemplate += '</div>';
                     layoutTemplate += '</div>';
                     
-                    // Add to layout templates
-                    layoutTemplates += '<script type="text/template" class="wpfe-acf-fc-layout-template" data-layout-template-' + WPFE.utils.sanitizeString(layoutName) + '="' + layoutTemplate + '"></script>';
+                    // Add to layout templates (encoding template to prevent JS errors)
+                    var safeLayoutTemplate = layoutTemplate.replace(/"/g, '&quot;');
+                    layoutTemplates += '<script type="text/template" class="wpfe-acf-fc-layout-template" data-layout-template-' + WPFE.utils.sanitizeString(layoutName) + '="' + safeLayoutTemplate + '"></script>';
                 }
             }
         }
@@ -758,11 +942,68 @@ WPFE.acf = (function($) {
                     // Add subfields with values
                     if (existingLayout.sub_fields) {
                         for (var k = 0; k < existingLayout.sub_fields.length; k++) {
-                            var valueSubField = existingLayout.sub_fields[k];
-                            valueSubField.name = fieldData.name + '[' + j + '][' + existingLayout.key + '][' + valueSubField.key + ']';
+                            var valueSubField = JSON.parse(JSON.stringify(existingLayout.sub_fields[k])); // Deep clone
+                            valueSubField.name = fieldData.name + '[' + j + '][' + layoutType + '][' + valueSubField.key + ']';
                             
-                            // Get value from layout values
-                            valueSubField.value = layoutValues[valueSubField.key] || '';
+                            // Get value from layout values with enhanced robust fallbacks
+                            if (layoutValues && typeof layoutValues === 'object') {
+                                valueSubField.parent_type = 'flexible_content';
+                                valueSubField.parent_layout = layoutType;
+                                valueSubField.layout_index = j;
+                                
+                                // Try all possible key formats ACF might use
+                                var possibleKeys = [
+                                    valueSubField.key,                              // Direct field key (field_xxx)
+                                    valueSubField.name,                             // Full field name path
+                                    valueSubField.key.replace('field_', ''),        // ACF sometimes strips field_ prefix
+                                    valueSubField.name.split('[').pop().split(']')[0], // Last segment of name
+                                    valueSubField.name.split('_').pop(),            // Last part after underscore
+                                    valueSubField.name.replace(/[\[\]']+/g, '')     // Name with brackets removed
+                                ];
+                                
+                                // For nested field names, try the last segment
+                                if (valueSubField.name.includes('[')) {
+                                    var lastSegmentMatch = valueSubField.name.match(/\[([^\]]+)\]$/);
+                                    if (lastSegmentMatch && lastSegmentMatch[1]) {
+                                        possibleKeys.push(lastSegmentMatch[1]);
+                                    }
+                                }
+                                
+                                // Try each possible key
+                                var valueFound = false;
+                                for (var ki = 0; ki < possibleKeys.length; ki++) {
+                                    var testKey = possibleKeys[ki];
+                                    if (testKey && layoutValues[testKey] !== undefined) {
+                                        valueSubField.value = layoutValues[testKey];
+                                        valueFound = true;
+                                        break;
+                                    }
+                                }
+                                
+                                // If still not found, check if value exists in a nested 'value' property
+                                if (!valueFound && layoutValues.value && 
+                                    typeof layoutValues.value === 'object') {
+                                    // Try the same keys but in the value object
+                                    for (var kj = 0; kj < possibleKeys.length; kj++) {
+                                        var testValueKey = possibleKeys[kj];
+                                        if (testValueKey && layoutValues.value[testValueKey] !== undefined) {
+                                            valueSubField.value = layoutValues.value[testValueKey];
+                                            valueFound = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                // Final fallback - set to empty
+                                if (!valueFound) {
+                                    valueSubField.value = '';
+                                    if (wpfe_data.debug_mode) {
+                                        console.debug('No value found for field', valueSubField.key, 'in layout', layoutType);
+                                    }
+                                }
+                            } else {
+                                valueSubField.value = '';
+                            }
                             
                             // Render subfield
                             var valueSubFieldHtml = renderAcfField(valueSubField);
@@ -802,6 +1043,161 @@ WPFE.acf = (function($) {
         return html;
     }
     
+    /**
+     * Render an ACF group field
+     * 
+     * @param {Object} fieldData The field data
+     * @return {string} The rendered HTML
+     */
+    function renderAcfGroupField(fieldData) {
+        var html = '<div class="wpfe-acf-field wpfe-acf-group-field" data-field-type="group">';
+        
+        // Add label
+        if (fieldData.label) {
+            html += '<label class="wpfe-field-label">' + WPFE.utils.sanitizeString(fieldData.label) + '</label>';
+        }
+        
+        // Group fields container
+        html += '<div class="wpfe-acf-group-fields">';
+        
+        // Process sub-fields
+        if (fieldData.sub_fields && Array.isArray(fieldData.sub_fields)) {
+            for (var i = 0; i < fieldData.sub_fields.length; i++) {
+                var subField = JSON.parse(JSON.stringify(fieldData.sub_fields[i])); // Deep clone
+                subField.name = fieldData.name + '[' + subField.key + ']';
+                
+                // Get value from group values with robust fallbacks
+                if (fieldData.value && typeof fieldData.value === 'object') {
+                    // Try all possible key formats ACF might use
+                    var possibleKeys = [
+                        subField.key,                              // Direct field key (field_xxx)
+                        subField.name,                             // Full field name path
+                        subField.key.replace('field_', ''),        // ACF sometimes strips field_ prefix
+                        subField.name.split('[').pop().split(']')[0], // Last segment of name
+                        subField.name.split('_').pop(),            // Last part after underscore
+                        subField.name.replace(/[\[\]']+/g, '')     // Name with brackets removed
+                    ];
+                    
+                    // Try each possible key
+                    var valueFound = false;
+                    for (var ki = 0; ki < possibleKeys.length; ki++) {
+                        var testKey = possibleKeys[ki];
+                        if (testKey && fieldData.value[testKey] !== undefined) {
+                            subField.value = fieldData.value[testKey];
+                            valueFound = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!valueFound) {
+                        subField.value = '';
+                    }
+                } else {
+                    subField.value = '';
+                }
+                
+                // Render subfield
+                var subFieldHtml = renderAcfField(subField);
+                if (subFieldHtml) {
+                    html += subFieldHtml;
+                }
+            }
+        }
+        
+        html += '</div>'; // Close group fields container
+        
+        // Add description
+        if (fieldData.description) {
+            html += '<p class="wpfe-field-description">' + WPFE.utils.sanitizeString(fieldData.description) + '</p>';
+        }
+        
+        html += '</div>'; // Close group field container
+        
+        return html;
+    }
+    
+    /**
+     * Render an ACF clone field
+     * 
+     * @param {Object} fieldData The field data
+     * @return {string} The rendered HTML
+     */
+    function renderAcfCloneField(fieldData) {
+        var html = '<div class="wpfe-acf-field wpfe-acf-clone-field" data-field-type="clone">';
+        
+        // Add label if display mode is set to show
+        if (fieldData.label && (!fieldData.display || fieldData.display === 'group')) {
+            html += '<label class="wpfe-field-label">' + WPFE.utils.sanitizeString(fieldData.label) + '</label>';
+        }
+        
+        // Clone fields container
+        html += '<div class="wpfe-acf-clone-fields">';
+        
+        // Process cloned fields (sub_fields property should contain the expanded cloned fields)
+        if (fieldData.sub_fields && Array.isArray(fieldData.sub_fields)) {
+            for (var i = 0; i < fieldData.sub_fields.length; i++) {
+                var clonedField = JSON.parse(JSON.stringify(fieldData.sub_fields[i])); // Deep clone
+                
+                // Set proper name based on display mode (seamless or group)
+                if (fieldData.display === 'seamless') {
+                    clonedField.name = clonedField.name; // Keep original name for seamless display
+                } else {
+                    clonedField.name = fieldData.name + '[' + clonedField.key + ']'; // Group prefix
+                }
+                
+                // Get value from clone values with robust fallbacks
+                if (fieldData.value && typeof fieldData.value === 'object') {
+                    // Try all possible key formats ACF might use
+                    var possibleKeys = [
+                        clonedField.key,                              // Direct field key (field_xxx)
+                        clonedField.name,                             // Full field name path
+                        clonedField.key.replace('field_', ''),        // ACF sometimes strips field_ prefix
+                        clonedField.name.split('[').pop().split(']')[0], // Last segment of name
+                        clonedField.name.split('_').pop(),            // Last part after underscore
+                        clonedField.name.replace(/[\[\]']+/g, '')     // Name with brackets removed
+                    ];
+                    
+                    // Try each possible key
+                    var valueFound = false;
+                    for (var ki = 0; ki < possibleKeys.length; ki++) {
+                        var testKey = possibleKeys[ki];
+                        if (testKey && fieldData.value[testKey] !== undefined) {
+                            clonedField.value = fieldData.value[testKey];
+                            valueFound = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!valueFound) {
+                        clonedField.value = '';
+                    }
+                } else {
+                    clonedField.value = '';
+                }
+                
+                // Render cloned field
+                var clonedFieldHtml = renderAcfField(clonedField);
+                if (clonedFieldHtml) {
+                    html += clonedFieldHtml;
+                }
+            }
+        } else {
+            // Fallback if no sub_fields are provided
+            html += '<div class="wpfe-acf-clone-message">This clone field could not be rendered properly.</div>';
+        }
+        
+        html += '</div>'; // Close clone fields container
+        
+        // Add description
+        if (fieldData.description) {
+            html += '<p class="wpfe-field-description">' + WPFE.utils.sanitizeString(fieldData.description) + '</p>';
+        }
+        
+        html += '</div>'; // Close clone field container
+        
+        return html;
+    }
+    
     // Public API
     return {
         /**
@@ -810,6 +1206,11 @@ WPFE.acf = (function($) {
         init: function() {
             // Initialize complex fields UI
             initAcfComplexFields();
+            
+            // Log supported field types for debugging
+            if (wpfe_data && wpfe_data.debug_mode) {
+                console.log('ACF Module initialized with field types:', Object.keys(acfFieldTypes));
+            }
         },
         
         /**
@@ -818,7 +1219,27 @@ WPFE.acf = (function($) {
          * @param {Object} fieldData The field data
          * @return {string|null} The rendered HTML or null if not supported
          */
-        renderField: renderAcfField,
+        renderField: function(fieldData) {
+            // Add debugging
+            if (wpfe_data && wpfe_data.debug_mode) {
+                console.log('Rendering ACF field:', fieldData.type, fieldData.name || fieldData.key);
+            }
+            
+            // Special error handling for missing field type
+            if (!fieldData || !fieldData.type) {
+                console.error('Missing or invalid ACF field data:', fieldData);
+                return '<div class="wpfe-acf-error">Invalid field data</div>';
+            }
+            
+            // Call the internal renderer
+            try {
+                var result = renderAcfField(fieldData);
+                return result;
+            } catch (err) {
+                console.error('Error rendering ACF field:', err, fieldData);
+                return '<div class="wpfe-acf-error">Error rendering field: ' + fieldData.type + '</div>';
+            }
+        },
         
         /**
          * Check if a field type is an ACF field
@@ -838,6 +1259,28 @@ WPFE.acf = (function($) {
         addAcfFieldEventHandlers: function($container) {
             // Initialize various field types
             initAcfSubfields($container);
+            
+            // Debug info for initialized subfields
+            if (wpfe_data && wpfe_data.debug_mode) {
+                console.log('Initialized ACF subfields:', {
+                    'datepickers': $container.find('.wpfe-acf-date-picker').length,
+                    'colorpickers': $container.find('.wpfe-acf-color-picker').length,
+                    'selects': $container.find('.wpfe-acf-select').length,
+                    'repeaters': $container.find('.wpfe-acf-repeater').length,
+                    'flexible_content': $container.find('.wpfe-acf-flexible-content').length,
+                    'groups': $container.find('.wpfe-acf-group-field').length,
+                    'clones': $container.find('.wpfe-acf-clone-field').length
+                });
+            }
+        },
+        
+        /**
+         * Get a list of all supported ACF field types
+         * 
+         * @return {string[]} Array of supported field types
+         */
+        getSupportedFieldTypes: function() {
+            return Object.keys(acfFieldTypes);
         }
     };
 })(jQuery);
