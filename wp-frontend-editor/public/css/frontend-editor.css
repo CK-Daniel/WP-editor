@@ -68,18 +68,43 @@
     cursor: pointer !important;
     min-height: 20px !important;
     min-width: 20px !important;
-    /* Make editable areas VERY noticeable for debugging */
+    /* Make editable areas VERY noticeable for debugging - with high z-index to ensure visibility */
     outline: 4px solid rgba(255, 0, 0, 0.8) !important; /* Very visible red outline */
     outline-offset: 2px !important;
     display: block !important; /* Ensure the element is block level for proper button positioning */
-    z-index: 1 !important; /* Establish a stacking context */
+    z-index: 10000 !important; /* High z-index to overcome theme overlay issues */
     background-color: rgba(255, 0, 0, 0.1) !important; /* Very visible background tint */
 }
 
 /* Debug mode makes elements more obvious */
 .wpfe-debug-mode .wpfe-editable {
-    outline: 2px dashed rgba(255, 0, 0, 0.5) !important;
-    background-color: rgba(255, 0, 0, 0.05) !important;
+    outline: 4px dashed rgba(255, 0, 0, 0.8) !important;
+    background-color: rgba(255, 0, 0, 0.1) !important;
+    position: relative !important;
+    z-index: 100000 !important;
+}
+
+/* Custom theme support - force compatibility with challenging themes */
+.wpfe-force-visible {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+    position: relative !important;
+}
+
+/* Override common theme problems */
+.wpfe-edit-button * {
+    color: var(--wpfe-white) !important; /* Ensure text is visible */
+    font-family: var(--wpfe-font-family) !important; /* Use consistent font */
+}
+
+/* Override hidden elements with !important for challenging themes */
+.wpfe-force-visible.wpfe-edit-button {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto !important;
 }
 
 /* Highlight effect when editable elements are hovered */
@@ -114,13 +139,13 @@
 /* Edit Buttons */
 .wpfe-edit-button {
     position: absolute !important;
-    z-index: 9999999 !important; /* Ensure buttons are above everything, including theme elements */
+    z-index: 99999999 !important; /* Extremely high z-index to ensure buttons are above EVERYTHING */
     background-color: var(--wpfe-primary) !important;
     color: var(--wpfe-white) !important;
     border: none !important;
     border-radius: 3px !important;
     padding: 8px !important;
-    box-shadow: 0 3px 8px var(--wpfe-shadow) !important;
+    box-shadow: 0 0 0 2px #fff, 0 3px 8px var(--wpfe-shadow) !important; /* White outline for visibility */
     cursor: pointer !important;
     font-size: 14px !important;
     line-height: 1 !important;
@@ -130,12 +155,14 @@
     opacity: 1 !important; /* Always visible for debugging */
     pointer-events: auto !important; /* Ensure buttons are clickable */
     transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
+    min-width: 44px !important; /* Larger for easier clicking */
+    min-height: 44px !important; /* Larger for easier clicking */
     text-transform: none !important;
     transform: scale(1) !important; /* No transform for better visibility */
     animation: none !important; /* Prevent theme animations from affecting our button */
     visibility: visible !important; /* Always visible for debugging */
+    max-width: none !important; /* Prevent theme styles from collapsing button */
+    max-height: none !important; /* Prevent theme styles from collapsing button */
 }
 
 /* Button visible on hover and when debug mode is active */

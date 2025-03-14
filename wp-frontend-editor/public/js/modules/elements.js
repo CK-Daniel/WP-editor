@@ -91,8 +91,28 @@ WPFE.elements = (function($) {
                     'transform': 'scale(1)',
                     'visibility': 'visible',
                     'background-color': 'red', // Make it obvious for debugging
-                    'z-index': '9999999'
-                });
+                    'z-index': '9999999',
+                    'position': 'absolute'
+                }).addClass('wpfe-force-visible');
+                
+                // For extremely challenging themes, create a duplicate button outside the normal DOM flow
+                if (wpfe_data.force_visible) {
+                    var $fixedButton = $button.clone();
+                    $fixedButton
+                        .css({
+                            'position': 'fixed',
+                            'top': '50px',
+                            'right': '50px',
+                            'z-index': '99999999',
+                            'background-color': 'red'
+                        })
+                        .addClass('wpfe-emergency-button')
+                        .appendTo('body');
+                        
+                    // Add a label to identify what field this controls
+                    $fixedButton.append('<span style="margin-left:4px;font-size:11px;white-space:nowrap;overflow:hidden;max-width:100px;text-overflow:ellipsis;">' + fieldName + '</span>');
+                }
+                
                 return;
             }
             
@@ -726,11 +746,61 @@ WPFE.elements = (function($) {
                 if ($('.wp-block').length || $('.block-editor-block-list__block').length)
                     detectedFrameworks.push('gutenberg');
                 
-                // Theme detection
+                // GeneratePress detection
+                if ($('body').hasClass('generate-press') || $('.site-content.container').length || $('.generate-content-area').length)
+                    detectedFrameworks.push('generatepress');
+
+                // OceanWP detection
+                if ($('body').hasClass('oceanwp') || $('#ocean-main').length || $('.site-main.clr').length)
+                    detectedFrameworks.push('oceanwp');
+                   
+                // Genesis detection
+                if ($('body').hasClass('genesis') || $('.site-inner').length && $('.content-sidebar-wrap').length)
+                    detectedFrameworks.push('genesis');
+                    
+                // Neve detection
+                if ($('body').hasClass('neve') || $('.nv-content-wrap').length || $('.neve-main').length)
+                    detectedFrameworks.push('neve');
+                    
+                // Storefront detection
+                if ($('body').hasClass('storefront') || $('.storefront-primary-navigation').length)
+                    detectedFrameworks.push('storefront');
+                    
+                // Blocksy detection
+                if ($('body').hasClass('ct-loading') || $('.ct-container').length)
+                    detectedFrameworks.push('blocksy');
+                    
+                // Newspaper/magazine theme detection
+                if ($('body').hasClass('td-newspaper') || $('.td-main-content').length || $('.herald-main-content').length)
+                    detectedFrameworks.push('newspaper');
+                
+                // WooCommerce-focused themes
+                if ($('.woocommerce').length && $('.product').length)
+                    detectedFrameworks.push('woocommerce-theme');
+                
+                // Theme detection - common themes
                 if ($('body').hasClass('kadence'))
                     detectedFrameworks.push('kadence');
                 if ($('body').hasClass('astra'))
                     detectedFrameworks.push('astra');
+                if ($('body').hasClass('twentytwentythree') || $('body').hasClass('twentytwentytwo') || $('body').hasClass('twentytwentyone') || $('body').hasClass('twentytwenty'))
+                    detectedFrameworks.push('twentyseries');
+                
+                // Generic framework detection for unknown themes
+                if (detectedFrameworks.length === 0) {
+                    console.log('[WPFE] No known theme/builder detected, applying universal detection');
+                    
+                    // Check for common theme patterns
+                    if ($('.site-main').length || $('.main-content').length) 
+                        detectedFrameworks.push('generic-theme');
+                        
+                    // Look for other common theme wrapper classes
+                    if ($('.container').length && $('.row').length) 
+                        detectedFrameworks.push('bootstrap-based');
+                        
+                    // Completely custom theme fallback - add as default
+                    detectedFrameworks.push('custom-theme');
+                }
                 
                 console.log('[WPFE] Detected frameworks:', detectedFrameworks.join(', ') || 'none');
                 
@@ -854,6 +924,47 @@ WPFE.elements = (function($) {
                 if (detectedFrameworks.includes('astra')) {
                     fieldSelectorSets.post_title.push({ selector: '.entry-title .ast-title', confidence: 0.7 });
                     fieldSelectorSets.post_content.push({ selector: '.ast-post-content-wrap, .ast-content-wrap', confidence: 0.7 });
+                }
+                
+                // GeneratePress theme specific selectors
+                if (detectedFrameworks.includes('generatepress')) {
+                    fieldSelectorSets.post_title.push({ selector: '.entry-header .entry-title', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.generate-content-area, .inside-article .entry-content', confidence: 0.7 });
+                }
+                
+                // OceanWP theme specific selectors
+                if (detectedFrameworks.includes('oceanwp')) {
+                    fieldSelectorSets.post_title.push({ selector: '.entry-title, .single-post-title', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '#content-wrap .entry, .entry-content', confidence: 0.7 });
+                }
+                
+                // Genesis theme specific selectors
+                if (detectedFrameworks.includes('genesis')) {
+                    fieldSelectorSets.post_title.push({ selector: '.entry-title, .content .entry-header .entry-title', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.entry-content, .content .entry', confidence: 0.7 });
+                }
+                
+                // Twenty series theme specific selectors 
+                if (detectedFrameworks.includes('twentyseries')) {
+                    fieldSelectorSets.post_title.push({ selector: '.entry-header .entry-title, .wp-block-post-title', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.entry-content, .wp-block-post-content', confidence: 0.7 });
+                }
+                
+                // Newspaper/magazine theme specific selectors
+                if (detectedFrameworks.includes('newspaper')) {
+                    fieldSelectorSets.post_title.push({ selector: '.entry-title, .td-post-title h1, .herald-entry-title', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.td-post-content, .herald-entry-content, .entry-content', confidence: 0.7 });
+                }
+                
+                // Generic or custom theme fallback
+                if (detectedFrameworks.includes('custom-theme') || detectedFrameworks.includes('generic-theme')) {
+                    // Add very broad selectors with lower confidence for custom themes
+                    fieldSelectorSets.post_title.push({ selector: 'h1:first-of-type, header h1, article h1, .title, .main-title', confidence: 0.5 });
+                    fieldSelectorSets.post_content.push({ selector: 'article > *, .entry > *, .post > *, .content > *, main > *', confidence: 0.5 });
+                    
+                    // Target standard article structures
+                    fieldSelectorSets.post_title.push({ selector: '*[class*="title"], *[class*="heading"], *[id*="title"], *[id*="heading"]', confidence: 0.4 });
+                    fieldSelectorSets.post_content.push({ selector: '*[class*="content"], *[class*="entry"], *[id*="content"], *[class*="text-container"]', confidence: 0.4 });
                 }
                 
                 // Process each field type
@@ -984,6 +1095,176 @@ WPFE.elements = (function($) {
                 return candidates.length ? candidates[0].element : null;
             }
             
+            // Universal fallback strategy for custom themes with unique structures
+            function findElementsByUniversalPatterns() {
+                console.log('[WPFE] Running universal pattern recognition for custom themes');
+                var matches = [];
+                var postId = wpfe_data.post_id;
+                
+                // 1. Title detection: Find the most prominent heading
+                // Look for the first visible heading in the page (most likely to be the title)
+                $('h1, h2, .title, [class*="title"], [id*="title"]').each(function() {
+                    var $element = $(this);
+                    
+                    // Skip invisible elements or too small elements
+                    if (!$element.is(':visible') || $element.text().trim().length < 3) {
+                        return true;
+                    }
+                    
+                    // Skip elements that are likely navigation or site titles
+                    if ($element.closest('nav, header.site-header, footer, .navigation, .menu').length) {
+                        return true;
+                    }
+                    
+                    // Skip elements that already have edit buttons
+                    if ($element.hasClass('wpfe-editable')) {
+                        return true;
+                    }
+                    
+                    // Calculate a confidence score based on position, size and prominence
+                    var confidence = 0.4; // Base confidence
+                    
+                    // Boost confidence for h1 elements
+                    if ($element.is('h1')) {
+                        confidence += 0.1;
+                    }
+                    
+                    // Boost for elements with "title" in class or ID
+                    if ($element.attr('class') && $element.attr('class').indexOf('title') > -1) {
+                        confidence += 0.05;
+                    }
+                    
+                    // Boost for first heading in the main content area
+                    if ($element.closest('main, article, .content, #content').length) {
+                        confidence += 0.1;
+                    }
+                    
+                    // Title elements are typically not gigantic text blocks
+                    if ($element.text().trim().length < 150) {
+                        confidence += 0.05;
+                    }
+                    
+                    matches.push({
+                        element: $element,
+                        fieldName: 'post_title',
+                        confidence: confidence,
+                        strategy: 'universal-pattern',
+                        found: true
+                    });
+                    
+                    // Only use the first good heading match
+                    return false;
+                });
+                
+                // 2. Content detection: Find elements with substantial text
+                // Look for large content blocks that likely contain the main content
+                $('div, article, section, .content, [class*="content"], [id*="content"]').each(function() {
+                    var $element = $(this);
+                    var textLength = $element.text().trim().length;
+                    
+                    // Skip tiny elements, menu items, navigation elements, etc.
+                    if (textLength < 200 || $element.closest('nav, header, footer, .menu, .navigation').length) {
+                        return true;
+                    }
+                    
+                    // Skip elements that already have edit buttons
+                    if ($element.hasClass('wpfe-editable')) {
+                        return true;
+                    }
+                    
+                    // Skip elements with many internal elements (likely layout containers)
+                    if ($element.children().length > 15) {
+                        return true;
+                    }
+                    
+                    // Calculate confidence based on content amount and semantic hints
+                    var confidence = 0.35; // Base confidence
+                    
+                    // More text generally means more likely to be main content
+                    if (textLength > 500) {
+                        confidence += 0.1;
+                    }
+                    
+                    // Boost for semantic class names
+                    if ($element.attr('class')) {
+                        var classAttr = $element.attr('class');
+                        if (classAttr.indexOf('content') > -1) confidence += 0.1;
+                        if (classAttr.indexOf('entry') > -1) confidence += 0.05;
+                        if (classAttr.indexOf('post') > -1) confidence += 0.05;
+                        if (classAttr.indexOf('article') > -1) confidence += 0.05;
+                        if (classAttr.indexOf('text') > -1) confidence += 0.05;
+                    }
+                    
+                    // Boost for semantic element types
+                    if ($element.is('article')) confidence += 0.1;
+                    
+                    // Only proceed if confidence is reasonable
+                    if (confidence >= 0.5) {
+                        matches.push({
+                            element: $element,
+                            fieldName: 'post_content',
+                            confidence: confidence,
+                            strategy: 'universal-pattern',
+                            found: true
+                        });
+                    }
+                });
+                
+                // 3. Featured image detection: Find prominent images
+                $('img, .featured-image, [class*="featured"], .post-thumbnail').each(function() {
+                    var $element = $(this);
+                    
+                    // Skip tiny images or hidden elements
+                    if (!$element.is(':visible') || $element.width() < 100 || $element.height() < 100) {
+                        return true;
+                    }
+                    
+                    // Skip elements that already have edit buttons
+                    if ($element.hasClass('wpfe-editable')) {
+                        return true;
+                    }
+                    
+                    // Skip icons and very small images (likely decorative)
+                    if ($element.width() < 200 && $element.height() < 200) {
+                        return true;
+                    }
+                    
+                    var confidence = 0.4;
+                    
+                    // Boost for images with telling class names
+                    if ($element.attr('class')) {
+                        var classAttr = $element.attr('class');
+                        if (classAttr.indexOf('featured') > -1) confidence += 0.15;
+                        if (classAttr.indexOf('thumbnail') > -1) confidence += 0.1;
+                        if (classAttr.indexOf('large') > -1) confidence += 0.05;
+                    }
+                    
+                    // Large images near the top of the page are often featured images
+                    var elementTop = $element.offset().top;
+                    var windowHeight = $(window).height();
+                    if (elementTop < windowHeight) {
+                        confidence += 0.1;
+                    }
+                    
+                    // Target element should be the image's parent if an img
+                    var targetElement = $element.is('img') ? $element.parent() : $element;
+                    
+                    // Only proceed if reasonable confidence
+                    if (confidence >= 0.5) {
+                        matches.push({
+                            element: targetElement,
+                            fieldName: 'featured_image',
+                            confidence: confidence,
+                            strategy: 'universal-pattern',
+                            found: true
+                        });
+                    }
+                });
+                
+                console.log('[WPFE] Universal pattern detection found', matches.length, 'potential elements');
+                return matches;
+            }
+            
             // Define common field selectors for legacy support
             var coreFields = [
                 { 
@@ -1070,13 +1351,22 @@ WPFE.elements = (function($) {
             var selectorMatches = findElementsBySelectors();
             var semanticMatches = findElementsBySemanticStructure();
             
-            // Combine all matches
-            var allMatches = [].concat(contentMatches, selectorMatches, semanticMatches);
+            // Add a universal fallback strategy for challenging custom themes
+            // This runs if we've found very few elements with the main strategies
+            var universalMatches = [];
+            if (contentMatches.length + selectorMatches.length + semanticMatches.length < 2) {
+                console.log('[WPFE] Few matches found with standard strategies. Running universal fallback strategy for custom themes.');
+                universalMatches = findElementsByUniversalPatterns();
+            }
+            
+            // Combine all matches including universal fallback matches
+            var allMatches = [].concat(contentMatches, selectorMatches, semanticMatches, universalMatches);
             
             console.log('[WPFE] Total potential matches found:', allMatches.length);
             console.log('[WPFE] Content matches:', contentMatches.length);
             console.log('[WPFE] Selector matches:', selectorMatches.length);
             console.log('[WPFE] Semantic matches:', semanticMatches.length);
+            console.log('[WPFE] Universal fallback matches:', universalMatches.length);
             
             // Group matches by element to merge duplicates and intelligently consolidate
             var elementToMatchMap = {};
@@ -1236,7 +1526,11 @@ WPFE.elements = (function($) {
                         if (wpfe_data.debug_mode) {
                             var confidenceColor = confidence > 0.8 ? 'green' : 
                                                  (confidence > 0.6 ? 'orange' : 'red');
-                            $element.css('outline-color', confidenceColor);
+                            $element.css({
+                                'outline-color': confidenceColor,
+                                'position': 'relative',
+                                'z-index': '10000'
+                            }).addClass('wpfe-force-visible');
                         }
                     } else {
                         // Update existing editable element if needed
@@ -1392,8 +1686,46 @@ WPFE.elements = (function($) {
                         'visibility': 'visible',
                         'transform': 'scale(1)',
                         'background-color': 'red',
-                        'z-index': '9999999'
-                    });
+                        'z-index': '9999999',
+                        'position': 'absolute'
+                    }).addClass('wpfe-force-visible');
+                    
+                    // Add universal emergency button for deeply problematic themes
+                    if ($('.wpfe-emergency-master-button').length === 0) {
+                        $('<button type="button" class="wpfe-emergency-master-button">WP Frontend Editor - Emergency Edit Mode</button>')
+                            .css({
+                                'position': 'fixed',
+                                'top': '10px',
+                                'right': '10px',
+                                'z-index': '99999999',
+                                'background-color': 'red',
+                                'color': 'white',
+                                'padding': '10px 20px',
+                                'font-size': '16px',
+                                'border-radius': '5px',
+                                'border': '2px solid white',
+                                'box-shadow': '0 0 10px rgba(0,0,0,0.5)',
+                                'cursor': 'pointer'
+                            })
+                            .appendTo('body')
+                            .on('click', function() {
+                                alert('Emergency Edit Mode Activated - Edit buttons have been made visible for all editable content.');
+                                // Force all buttons to be extremely visible
+                                $('.wpfe-edit-button').addClass('wpfe-emergency-visible')
+                                    .css({
+                                        'position': 'relative',
+                                        'display': 'block',
+                                        'opacity': '1',
+                                        'visibility': 'visible',
+                                        'transform': 'scale(1)',
+                                        'margin': '10px auto',
+                                        'width': '200px',
+                                        'height': '40px',
+                                        'background-color': 'red',
+                                        'z-index': '9999999'
+                                    });
+                            });
+                    }
                 }
                 
                 // Add global helper for manual button addition
