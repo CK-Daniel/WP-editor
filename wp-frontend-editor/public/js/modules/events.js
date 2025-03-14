@@ -172,14 +172,15 @@ WPFE.events = (function($) {
                 WPFE.utils.formatString(wpfe_data.i18n.editing_field || 'Editing: {0}', safeFieldName)
             );
             
-            // Show loading state
-            sidebar.find('.wpfe-sidebar-content').html(
-                '<div class="wpfe-loading"><span class="dashicons dashicons-update-alt"></span> ' + 
-                (wpfe_data.i18n.loading || 'Loading...') + '</div>'
-            );
+            // Show loading state - make sure we update the correct element
+            var $sidebarContent = sidebar.find('.wpfe-editor-sidebar-content');
+            if (!$sidebarContent.length) {
+                console.error('Could not find sidebar content container');
+                $sidebarContent = sidebar;
+            }
             
-            // Fetch field data with enhanced error handling
-            sidebar.find('.wpfe-sidebar-content').html(
+            // Clear any previous content and show loading indicator
+            $sidebarContent.html(
                 '<div class="wpfe-loading"><span class="dashicons dashicons-update-alt"></span> ' + 
                 (wpfe_data.i18n.loading || 'Loading...') + 
                 '<div class="wpfe-loading-details">Fetching field data...</div></div>'
@@ -192,7 +193,13 @@ WPFE.events = (function($) {
                         var errorMessage = response && response.data && response.data.message ? 
                             response.data.message : 'Unknown error loading field';
                         
-                        sidebar.find('.wpfe-sidebar-content').html(
+                        // Make sure we update the correct element
+                        var $sidebarContent = sidebar.find('.wpfe-editor-sidebar-content');
+                        if (!$sidebarContent.length) {
+                            $sidebarContent = sidebar;
+                        }
+                        
+                        $sidebarContent.html(
                             '<div class="wpfe-error"><p>' + errorMessage + '</p>' +
                             '<p class="wpfe-error-details">Please try again or contact the site administrator if this problem persists.</p>' +
                             '<button type="button" class="wpfe-close-button button">' + 
@@ -230,7 +237,14 @@ WPFE.events = (function($) {
                     trackFieldEdit(fieldName, postId);
                 } catch (err) {
                     console.error('Error processing field data:', err);
-                    sidebar.find('.wpfe-sidebar-content').html(
+                    
+                    // Make sure we update the correct element
+                    var $sidebarContent = sidebar.find('.wpfe-editor-sidebar-content');
+                    if (!$sidebarContent.length) {
+                        $sidebarContent = sidebar;
+                    }
+                    
+                    $sidebarContent.html(
                         '<div class="wpfe-error">' +
                         '<p>Error rendering field editor</p>' +
                         '<p class="wpfe-error-details">Technical details: ' + err.message + '</p>' +

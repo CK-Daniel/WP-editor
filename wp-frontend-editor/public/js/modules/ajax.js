@@ -228,6 +228,16 @@ WPFE.ajax = (function($) {
                     callback(timeoutResponse);
                 }
                 console.error('WPFE: Field fetch request timed out for ' + fieldName);
+                
+                // Force the sidebar to show an error to prevent indefinite loading
+                var $sidebar = $('#wpfe-editor-sidebar');
+                if ($sidebar.length && $sidebar.find('.wpfe-editor-sidebar-loading').is(':visible')) {
+                    $sidebar.find('.wpfe-editor-sidebar-content').html(
+                        '<div class="wpfe-error"><p>Request timed out while loading the editor.</p>' +
+                        '<p class="wpfe-error-details">Please try again or reload the page.</p>' +
+                        '<button type="button" class="wpfe-close-button button">Close</button></div>'
+                    );
+                }
             }, 15000); // 15 second timeout
             
             // Create a wrapper callback to clear the timeout

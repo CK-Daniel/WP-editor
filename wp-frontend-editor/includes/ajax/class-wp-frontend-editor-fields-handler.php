@@ -290,8 +290,8 @@ class WP_Frontend_Editor_Fields_Handler {
         
         // If that fails, try looking up by name
         if (!$acf_field) {
-            // Try to find field by name
-            $potential_field = $this->find_acf_field_by_name($field);
+            // Try to find field by name - pass post_id to enable post-specific lookup
+            $potential_field = $this->acf_utils->find_acf_field_by_name($field, $post_id);
             if ($potential_field) {
                 $acf_field = $potential_field;
             }
@@ -676,7 +676,9 @@ class WP_Frontend_Editor_Fields_Handler {
      * @return array|false The ACF field array or false if not found
      */
     public function find_acf_field_by_name($field_name) {
-        return $this->acf_utils->find_acf_field_by_name($field_name, null);
+        global $post;
+        $post_id = ($post && isset($post->ID)) ? $post->ID : null;
+        return $this->acf_utils->find_acf_field_by_name($field_name, $post_id);
     }
     
     /**
