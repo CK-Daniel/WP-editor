@@ -65,12 +65,14 @@
 .wpfe-editable {
     position: relative !important;
     transition: all 0.3s ease !important;
-    cursor: pointer;
+    cursor: pointer !important;
     min-height: 20px !important;
     min-width: 20px !important;
     /* Add a small outline always to make editable areas more noticeable */
-    outline: 1px dotted rgba(56, 88, 233, 0.2);
-    outline-offset: 2px;
+    outline: 1px dotted rgba(56, 88, 233, 0.2) !important;
+    outline-offset: 2px !important;
+    display: block !important; /* Ensure the element is block level for proper button positioning */
+    z-index: 1 !important; /* Establish a stacking context */
 }
 
 /* Highlight effect when editable elements are hovered */
@@ -104,7 +106,7 @@
 /* Edit Buttons */
 .wpfe-edit-button {
     position: absolute !important;
-    z-index: 999999 !important; /* Ensure buttons are above everything */
+    z-index: 9999999 !important; /* Ensure buttons are above everything, including theme elements */
     background-color: var(--wpfe-primary) !important;
     color: var(--wpfe-white) !important;
     border: none !important;
@@ -124,6 +126,7 @@
     min-height: 36px !important;
     text-transform: none !important;
     transform: scale(0.9) translateY(5px);
+    animation: none !important; /* Prevent theme animations from affecting our button */
 }
 
 /* Button positioning - more visible positions */
@@ -148,9 +151,12 @@
 }
 
 /* Make buttons fully visible on hover */
-.wpfe-editable:hover .wpfe-edit-button {
+.wpfe-editable:hover .wpfe-edit-button,
+.wpfe-edit-button:hover {
     opacity: 1 !important;
     transform: scale(1) translateY(0) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
 }
 
 /* Show button during element focus as well (for accessibility) */
@@ -158,6 +164,13 @@
 .wpfe-editable:focus-within .wpfe-edit-button {
     opacity: 1 !important;
     transform: scale(1) translateY(0) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+
+/* Add a delay to the button fade-out for better usability */
+.wpfe-editable .wpfe-edit-button {
+    transition: opacity 0.2s ease 0.1s, transform 0.2s ease, background-color 0.2s ease, visibility 0.2s ease 0.1s !important;
 }
 
 .wpfe-edit-button:hover {

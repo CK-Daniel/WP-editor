@@ -58,9 +58,9 @@ class WP_Frontend_Editor_Logs {
      */
     public function add_logs_page() {
         $logs_page = add_submenu_page(
-            'options-general.php',
-            __( 'Frontend Editor Logs', 'wp-frontend-editor' ),
-            __( 'Frontend Editor Logs', 'wp-frontend-editor' ),
+            'wp-frontend-editor', // Parent menu slug (main menu)
+            __( 'Logs', 'wp-frontend-editor' ),
+            __( 'Logs', 'wp-frontend-editor' ),
             'manage_options',
             'wp-frontend-editor-logs',
             array( $this, 'render_logs_page' )
@@ -119,7 +119,7 @@ class WP_Frontend_Editor_Logs {
      * @param string $hook The current admin page.
      */
     public function enqueue_scripts( $hook ) {
-        if ( 'frontend-editor_page_wp-frontend-editor-logs' !== $hook ) {
+        if ( 'wp-frontend-editor_page_wp-frontend-editor-logs' !== $hook ) {
             return;
         }
         

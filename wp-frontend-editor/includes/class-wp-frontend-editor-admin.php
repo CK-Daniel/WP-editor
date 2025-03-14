@@ -36,22 +36,140 @@ class WP_Frontend_Editor_Admin {
      * Add admin menu.
      */
     public function add_admin_menu() {
-        // Main menu - using 'options-general.php' as parent
-        $main_page = add_options_page(
-            __( 'WP Frontend Editor', 'wp-frontend-editor' ),
+        // Create main menu item
+        $main_page = add_menu_page(
             __( 'Frontend Editor', 'wp-frontend-editor' ),
+            __( 'Frontend Editor', 'wp-frontend-editor' ),
+            'manage_options',
+            'wp-frontend-editor',
+            array( $this, 'render_settings_page' ),
+            'dashicons-edit', // Use edit icon
+            30 // Position after Comments
+        );
+        
+        // Add settings submenu page (which is the same as the main page)
+        $settings_page = add_submenu_page(
+            'wp-frontend-editor',
+            __( 'Settings', 'wp-frontend-editor' ),
+            __( 'Settings', 'wp-frontend-editor' ),
             'manage_options',
             'wp-frontend-editor',
             array( $this, 'render_settings_page' )
         );
         
+        // Add documentation page
+        $docs_page = add_submenu_page(
+            'wp-frontend-editor',
+            __( 'Documentation', 'wp-frontend-editor' ),
+            __( 'Documentation', 'wp-frontend-editor' ),
+            'manage_options',
+            'wp-frontend-editor-docs',
+            array( $this, 'render_docs_page' )
+        );
+        
         // Log when settings page is accessed
-        add_action( 'load-' . $main_page, function() {
+        add_action( 'load-' . $settings_page, function() {
             wpfe_log( 'Settings page accessed', 'info', array(
                 'user_id' => get_current_user_id(),
                 'user_name' => wp_get_current_user()->display_name
             ));
         });
+        
+        // Log when docs page is accessed
+        add_action( 'load-' . $docs_page, function() {
+            wpfe_log( 'Documentation page accessed', 'info', array(
+                'user_id' => get_current_user_id(),
+                'user_name' => wp_get_current_user()->display_name
+            ));
+        });
+    }
+    
+    /**
+     * Render the documentation page.
+     */
+    public function render_docs_page() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'Frontend Editor Documentation', 'wp-frontend-editor' ); ?></h1>
+            
+            <div class="wpfe-admin-section">
+                <div class="wpfe-admin-section-header">
+                    <h2 class="wpfe-admin-section-title">
+                        <span class="dashicons dashicons-welcome-learn-more"></span>
+                        <?php esc_html_e( 'Getting Started', 'wp-frontend-editor' ); ?>
+                    </h2>
+                </div>
+                <div class="wpfe-admin-section-content">
+                    <p>
+                        <?php esc_html_e( 'The Frontend Editor plugin allows your users to edit content directly from the frontend of your website. Here\'s how to get started:', 'wp-frontend-editor' ); ?>
+                    </p>
+                    
+                    <ol>
+                        <li><?php esc_html_e( 'Configure which post types should be editable in the Settings page', 'wp-frontend-editor' ); ?></li>
+                        <li><?php esc_html_e( 'Choose which fields should be available for editing', 'wp-frontend-editor' ); ?></li>
+                        <li><?php esc_html_e( 'Set up user permissions to control who can edit content', 'wp-frontend-editor' ); ?></li>
+                        <li><?php esc_html_e( 'Visit your site while logged in to see and use the frontend editor', 'wp-frontend-editor' ); ?></li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="wpfe-admin-section">
+                <div class="wpfe-admin-section-header">
+                    <h2 class="wpfe-admin-section-title">
+                        <span class="dashicons dashicons-admin-customizer"></span>
+                        <?php esc_html_e( 'Advanced Custom Fields Support', 'wp-frontend-editor' ); ?>
+                    </h2>
+                </div>
+                <div class="wpfe-admin-section-content">
+                    <p>
+                        <?php esc_html_e( 'The Frontend Editor includes full support for Advanced Custom Fields, including complex field types:', 'wp-frontend-editor' ); ?>
+                    </p>
+                    
+                    <ul>
+                        <li><?php esc_html_e( 'Repeater Fields', 'wp-frontend-editor' ); ?></li>
+                        <li><?php esc_html_e( 'Flexible Content', 'wp-frontend-editor' ); ?></li>
+                        <li><?php esc_html_e( 'Group Fields', 'wp-frontend-editor' ); ?></li>
+                        <li><?php esc_html_e( 'Gallery Fields', 'wp-frontend-editor' ); ?></li>
+                        <li><?php esc_html_e( 'Image Fields', 'wp-frontend-editor' ); ?></li>
+                        <li><?php esc_html_e( 'WYSIWYG Editors', 'wp-frontend-editor' ); ?></li>
+                        <li><?php esc_html_e( 'And more...', 'wp-frontend-editor' ); ?></li>
+                    </ul>
+                    
+                    <p>
+                        <?php esc_html_e( 'To use ACF fields, simply make sure they are enabled in the Content tab of the settings.', 'wp-frontend-editor' ); ?>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="wpfe-admin-section">
+                <div class="wpfe-admin-section-header">
+                    <h2 class="wpfe-admin-section-title">
+                        <span class="dashicons dashicons-editor-help"></span>
+                        <?php esc_html_e( 'Troubleshooting', 'wp-frontend-editor' ); ?>
+                    </h2>
+                </div>
+                <div class="wpfe-admin-section-content">
+                    <p>
+                        <?php esc_html_e( 'If you encounter any issues with the Frontend Editor, try these steps:', 'wp-frontend-editor' ); ?>
+                    </p>
+                    
+                    <ol>
+                        <li><?php esc_html_e( 'Check the Logs page for any error messages', 'wp-frontend-editor' ); ?></li>
+                        <li><?php esc_html_e( 'Ensure your theme is compatible by checking for any JavaScript errors in the browser console', 'wp-frontend-editor' ); ?></li>
+                        <li><?php esc_html_e( 'Verify that users have the correct permissions to edit content', 'wp-frontend-editor' ); ?></li>
+                        <li><?php esc_html_e( 'Try disabling other plugins to check for conflicts', 'wp-frontend-editor' ); ?></li>
+                    </ol>
+                    
+                    <p>
+                        <?php esc_html_e( 'For additional help, visit our support forum or contact us directly.', 'wp-frontend-editor' ); ?>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <?php
     }
 
     /**
@@ -728,7 +846,7 @@ class WP_Frontend_Editor_Admin {
     public function add_settings_link( $links ) {
         $settings_link = sprintf(
             '<a href="%s">%s</a>',
-            admin_url( 'options-general.php?page=wp-frontend-editor' ),
+            admin_url( 'admin.php?page=wp-frontend-editor' ),
             __( 'Settings', 'wp-frontend-editor' )
         );
         

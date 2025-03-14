@@ -26,15 +26,36 @@ WPFE.elements = (function($) {
         }
         
         try {
+            // Set button position class based on settings
+            var buttonPosition = wpfe_data.button_position || 'top-right';
+            var positionClass = 'wpfe-button-' + buttonPosition;
+            
+            // Set button style based on settings
+            var buttonStyle = wpfe_data.button_style || 'icon-only';
             var buttonContent = '';
-            var positionClass = 'wpfe-button-' + (wpfe_data.button_position || 'top-right');
             
-            // Add edit button
-            var $button = $('<button type="button" class="wpfe-edit-button ' + positionClass + '" data-wpfe-field="' + fieldName + '" data-wpfe-post-id="' + postId + '"></button>');
-            $button.html('<span class="dashicons dashicons-edit"></span>');
+            if (buttonStyle === 'icon-only') {
+                buttonContent = '<span class="dashicons dashicons-edit"></span>';
+            } else if (buttonStyle === 'text-only') {
+                buttonContent = '<span class="wpfe-button-text">' + (wpfe_data.i18n.edit || 'Edit') + '</span>';
+            } else { // icon-text
+                buttonContent = '<span class="dashicons dashicons-edit"></span><span class="wpfe-button-text">' + (wpfe_data.i18n.edit || 'Edit') + '</span>';
+            }
             
-            // Add the button to the element
+            // Remove any existing edit buttons to prevent duplicates
+            $element.find('.wpfe-edit-button').remove();
+            
+            // Add edit button with accessibility improvements
+            var $button = $('<button type="button" class="wpfe-edit-button ' + positionClass + '" data-wpfe-field="' + fieldName + '" data-wpfe-post-id="' + postId + '" aria-label="' + (wpfe_data.i18n.edit_field || 'Edit') + ' ' + fieldName + '"></button>');
+            $button.html(buttonContent);
+            
+            // Add the button to the element (always at the end for proper z-index)
             $element.append($button);
+            
+            // Ensure the element has position:relative if it's static
+            if ($element.css('position') === 'static') {
+                $element.css('position', 'relative');
+            }
             
             // Optimize button position for visibility
             optimizeButtonPosition($element, $button);
@@ -43,6 +64,49 @@ WPFE.elements = (function($) {
             if (wpfe_data.button_hover) {
                 $button.addClass('wpfe-button-hover');
             }
+            
+            // Add a data attribute to track button status
+            $element.attr('data-wpfe-has-button', 'true');
+            
+            // Ensure button is visible on hover with a small delay
+            $element.on('mouseenter', function() {
+                $button.css({
+                    'opacity': '1',
+                    'transform': 'scale(1) translateY(0)',
+                    'visibility': 'visible'
+                });
+            });
+            
+            $element.on('mouseleave', function() {
+                // Add a small delay before hiding for better usability
+                setTimeout(function() {
+                    if (!$button.is(':hover')) {
+                        $button.css({
+                            'opacity': '0',
+                            'transform': 'scale(0.9) translateY(5px)'
+                        });
+                    }
+                }, 200);
+            });
+            
+            // Also ensure the button itself has proper hover behavior
+            $button.on('mouseenter', function() {
+                $(this).css({
+                    'opacity': '1',
+                    'transform': 'scale(1.05)',
+                    'visibility': 'visible'
+                });
+            });
+            
+            $button.on('mouseleave', function() {
+                if (!$element.is(':hover')) {
+                    $(this).css({
+                        'opacity': '0',
+                        'transform': 'scale(0.9) translateY(5px)'
+                    });
+                }
+            });
+            
         } catch (e) {
             if (wpfe_data.debug_mode) {
                 console.error('Error adding edit button:', e);
@@ -352,6 +416,11 @@ WPFE.elements = (function($) {
                         var $element = $(this);
                         var postId = wpfe_data.post_id;
                         
+                        // Make sure any static elements get relative positioning
+                        if ($element.css('position') === 'static') {
+                            $element.css('position', 'relative');
+                        }
+                        
                         // Don't apply to elements that already have the editable class
                         if (!$element.hasClass('wpfe-editable')) {
                             // Add editable class and data attributes
@@ -362,6 +431,12 @@ WPFE.elements = (function($) {
                             
                             // Create edit button
                             addEditButton($element, field.name, postId);
+                            foundElements.push($element);
+                        } else {
+                            // For elements that are already editable, make sure they have a working button
+                            if (!$element.attr('data-wpfe-has-button') || $element.find('.wpfe-edit-button').length === 0) {
+                                addEditButton($element, $element.attr('data-wpfe-field') || field.name, $element.attr('data-wpfe-post-id') || postId);
+                            }
                             foundElements.push($element);
                         }
                     });
@@ -376,11 +451,88 @@ WPFE.elements = (function($) {
             // Try to identify unlabeled elements that might be editable
             identifyPotentialEditableElements();
             
+            // Handle existing editable elements that might not have buttons
+            $('.wpfe-editable').each(function() {
+                var $element = $(this);
+                if (!$element.attr('data-wpfe-has-button') || $element.find('.wpfe-edit-button').length === 0) {
+                    var fieldName = $element.attr('data-wpfe-field');
+                    var postId = $element.attr('data-wpfe-post-id') || wpfe_data.post_id;
+                    
+                    if (fieldName && postId) {
+                        addEditButton($element, fieldName, postId);
+                    }
+                }
+            });
+            
             // Cache all edit buttons after initialization
             WPFE.core.setEditButtons($('.wpfe-edit-button'));
             
+            // Add MutationObserver to watch for dynamic content changes
+            if (window.MutationObserver) {
+                var observer = new MutationObserver(function(mutations) {
+                    var contentChanged = false;
+                    
+                    // Check if the mutations involved adding nodes
+                    mutations.forEach(function(mutation) {
+                        if (mutation.addedNodes.length) {
+                            contentChanged = true;
+                        }
+                    });
+                    
+                    // Only refresh if content was actually added
+                    if (contentChanged) {
+                        // Small delay to allow DOM to settle
+                        setTimeout(function() {
+                            // Refresh editable elements
+                            WPFE.elements.refreshElements();
+                        }, 500);
+                    }
+                });
+                
+                // Start observing the document body for content changes
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                    attributes: false,
+                    characterData: false
+                });
+            }
+            
             // Trigger an event after initialization so other code can hook into it
             $(document).trigger('wpfe:elements_initialized');
+            
+            // Also initialize on window load to ensure all content is processed
+            $(window).on('load', function() {
+                // Refresh editable elements when all content is loaded
+                setTimeout(function() {
+                    WPFE.elements.refreshElements();
+                }, 500);
+            });
+        },
+        
+        /**
+         * Refresh editable elements
+         * For when new content is loaded dynamically
+         */
+        refreshElements: function() {
+            // Find all editable elements that don't have buttons
+            $('.wpfe-editable').each(function() {
+                var $element = $(this);
+                if (!$element.attr('data-wpfe-has-button') || $element.find('.wpfe-edit-button').length === 0) {
+                    var fieldName = $element.attr('data-wpfe-field');
+                    var postId = $element.attr('data-wpfe-post-id') || wpfe_data.post_id;
+                    
+                    if (fieldName && postId) {
+                        addEditButton($element, fieldName, postId);
+                    }
+                }
+            });
+            
+            // Update the edit buttons cache
+            WPFE.core.setEditButtons($('.wpfe-edit-button'));
+            
+            // Trigger an event for other components to hook into
+            $(document).trigger('wpfe:elements_refreshed');
         },
 
         // Expose private functions that need to be accessible from other modules
