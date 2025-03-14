@@ -118,12 +118,61 @@ jQuery(document).ready(function($) {
         }, 1000);
     }
     
-    // Initialize core module
-    WPFE.core.init();
+    // Initialize core module with error handling
+    try {
+        console.log('[WPFE] Initializing core module...');
+        WPFE.core.init();
+        console.log('[WPFE] Core module initialized successfully');
+    } catch (e) {
+        console.error('[WPFE] Error initializing core module:', e);
+        
+        // Emergency fallback if core fails to initialize
+        if (!WPFE.modulesReady.core) {
+            console.warn('[WPFE] Creating emergency core module fallbacks');
+            if (!WPFE.elements || typeof WPFE.elements.init !== 'function') {
+                console.warn('[WPFE] Creating elements module emergency fallback');
+                WPFE.elements = WPFE.elements || {};
+                WPFE.elements.init = function() { 
+                    console.warn('[WPFE] Using elements fallback stub'); 
+                    return true; 
+                };
+                WPFE.elements.refreshElements = function() { 
+                    console.warn('[WPFE] Using refreshElements fallback stub'); 
+                };
+                WPFE.elements.addEditButton = function() { 
+                    console.warn('[WPFE] Using addEditButton fallback stub'); 
+                };
+                WPFE.modulesReady.elements = true;
+            }
+            
+            if (!WPFE.events || typeof WPFE.events.init !== 'function') {
+                console.warn('[WPFE] Creating events module emergency fallback');
+                WPFE.events = WPFE.events || {};
+                WPFE.events.init = function() { 
+                    console.warn('[WPFE] Using events fallback stub'); 
+                    return true; 
+                };
+                WPFE.modulesReady.events = true;
+            }
+            
+            // Trigger manual initialization of elements module
+            try {
+                console.log('[WPFE] Manually initializing elements module fallback');
+                WPFE.elements.init();
+            } catch (elemErr) {
+                console.error('[WPFE] Failed to initialize elements fallback:', elemErr);
+            }
+        }
+    }
     
     // Initialize native fields module if available
     if (typeof WPFE.nativeFields !== 'undefined') {
-        WPFE.nativeFields.init();
+        try {
+            WPFE.nativeFields.init();
+            console.log('[WPFE] Native fields module initialized');
+        } catch (e) {
+            console.error('[WPFE] Error initializing native fields module:', e);
+        }
     }
     
     // Add debug output about what was found

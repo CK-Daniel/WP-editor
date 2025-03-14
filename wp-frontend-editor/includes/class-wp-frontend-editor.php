@@ -393,27 +393,65 @@ class WP_Frontend_Editor {
      * @return void
      */
     public function add_editor_container() {
+        error_log('WP Frontend Editor: add_editor_container() called');
+        
         // Only add for users who can edit
         if ( ! $this->current_user_can_edit() ) {
+            error_log('WP Frontend Editor: User cannot edit - not adding editor container');
             return;
         }
 
         // Check if this post type is enabled
         $post_type = get_post_type();
         if ( $post_type && ! empty( $this->options['post_types'] ) && ! in_array( $post_type, $this->options['post_types'], true ) ) {
-            if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            // Skip this check in debug mode to ensure the editor loads for testing
+            if (!isset($this->options['debug_mode']) || !$this->options['debug_mode']) {
                 error_log('WP Frontend Editor: Not adding editor container - Post type ' . $post_type . ' is not enabled in settings.');
+                return;
+            } else {
+                error_log('WP Frontend Editor: Post type is not enabled, but continuing anyway due to debug mode.');
             }
-            return;
         }
         
         // Debug info for editor container
-        if ( defined('WP_DEBUG') && WP_DEBUG ) {
-            error_log('WP Frontend Editor: Adding editor container for post type ' . $post_type);
-        }
+        error_log('WP Frontend Editor: Adding editor container for post type ' . $post_type);
+        error_log('WP Frontend Editor: Template path: ' . WPFE_PLUGIN_DIR . 'public/templates/editor-sidebar.php');
         
         // Include the editor sidebar template
-        include WPFE_PLUGIN_DIR . 'public/templates/editor-sidebar.php';
+        // Check if file exists first
+        $template_path = WPFE_PLUGIN_DIR . 'public/templates/editor-sidebar.php';
+        if (file_exists($template_path)) {
+            include $template_path;
+            error_log('WP Frontend Editor: Sidebar template included successfully');
+        } else {
+            error_log('WP Frontend Editor: ERROR - Sidebar template not found at: ' . $template_path);
+            // Output emergency sidebar HTML directly
+            echo '<div id="wpfe-editor-sidebar" class="wpfe-editor-sidebar" style="display: none;">';
+            echo '  <div class="wpfe-editor-sidebar-header">';
+            echo '    <div class="wpfe-editor-sidebar-header-content">';
+            echo '      <h2 class="wpfe-editor-sidebar-title">';
+            echo '        <span class="wpfe-editor-field-name"></span>';
+            echo '      </h2>';
+            echo '    </div>';
+            echo '    <div class="wpfe-editor-sidebar-controls">';
+            echo '      <button type="button" class="wpfe-editor-sidebar-close">';
+            echo '        <span class="dashicons dashicons-no-alt"></span>';
+            echo '      </button>';
+            echo '    </div>';
+            echo '  </div>';
+            echo '  <div class="wpfe-editor-sidebar-content">';
+            echo '    <div class="wpfe-editor-sidebar-fields"></div>';
+            echo '  </div>';
+            echo '  <div class="wpfe-editor-sidebar-footer">';
+            echo '    <div class="wpfe-editor-sidebar-actions">';
+            echo '      <button type="button" class="wpfe-editor-sidebar-cancel">Cancel</button>';
+            echo '      <button type="button" class="wpfe-editor-sidebar-save">Save Changes</button>';
+            echo '    </div>';
+            echo '  </div>';
+            echo '</div>';
+            echo '<div id="wpfe-editor-overlay" class="wpfe-editor-overlay" style="display: none;"></div>';
+            echo '<!-- Emergency sidebar HTML -->';
+        }
         
         // Load required WordPress admin styles for the field editor
         wp_enqueue_style( 'common' );

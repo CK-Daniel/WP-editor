@@ -8,10 +8,16 @@ var WPFE = WPFE || {};
 WPFE.elements = (function($) {
     'use strict';
     
-    // Mark this module as loaded
+    // Mark this module as loaded - make sure to mark ourselves as loaded first thing
+    if (!WPFE.modulesReady) {
+        WPFE.modulesReady = {};
+    }
     WPFE.modulesReady.elements = true;
+    
+    // Log module loading for debugging if the debug object exists
     if (WPFE.debug && WPFE.debug.modulesLoaded) {
         WPFE.debug.modulesLoaded.push('elements');
+        console.log('[WPFE] Elements module loaded and marked as ready');
     }
 
     // Private functions
@@ -432,6 +438,15 @@ WPFE.elements = (function($) {
             console.log('[WPFE] Advanced Elements module initializing with AI-inspired multi-strategy detection');
             console.log('[WPFE] Debug mode active:', wpfe_data.debug_mode ? 'Yes' : 'No');
             
+            // Ensure the WPFE global object and its properties exist to prevent errors
+            if (!WPFE.core) {
+                console.warn('[WPFE] Core module not found - creating minimal stub');
+                WPFE.core = {
+                    setEditButtons: function() {},
+                    getActiveField: function() { return null; }
+                };
+            }
+            
             // =====================================================================
             // INTELLIGENT FIELD DETECTION SYSTEM
             // Using multiple strategies with confidence scoring
@@ -510,7 +525,13 @@ WPFE.elements = (function($) {
                         var normalizedElementText = normalizeText(elementText);
                         
                         // Calculate similarity score (0-1)
-                        var similarity = calculateContentSimilarity(normalizedElementText, normalizedFieldValue);
+                        var similarity;
+                        try {
+                            similarity = calculateContentSimilarity(normalizedElementText, normalizedFieldValue);
+                        } catch (e) {
+                            console.error('[WPFE] Error calculating content similarity:', e);
+                            similarity = 0; // Set a safe default value
+                        }
                         
                         // Log high-confidence matches for debugging
                         if (similarity > 0.7) {
@@ -1597,7 +1618,13 @@ WPFE.elements = (function($) {
                                             }
                                             
                                             // Check content similarity with lower threshold
-                                            var similarity = calculateContentSimilarity($element.text(), fieldValue);
+                                            var similarity;
+                                            try {
+                                                similarity = calculateContentSimilarity($element.text(), fieldValue);
+                                            } catch (e) {
+                                                console.error('[WPFE] Error calculating content similarity in recovery mode:', e);
+                                                similarity = 0; // Safe default
+                                            }
                                             if (similarity > 0.3) { // Lower threshold than normal
                                                 console.log('[WPFE] Lower threshold match:', similarity.toFixed(2), 
                                                           'Element:', $element.prop('tagName'), 
@@ -1730,16 +1757,24 @@ WPFE.elements = (function($) {
                 
                 // Add global helper for manual button addition
                 window.wpfeAddButtonTo = function(selector) {
-                    var $element = $(selector);
-                    if ($element.length) {
-                        console.log('[WPFE] Manually adding button to:', selector);
-                        
-                        $element.addClass('wpfe-editable')
-                            .attr('data-wpfe-field', 'manual_content')
-                            .attr('data-wpfe-post-id', postId)
-                            .attr('data-wpfe-identified-by', 'manual');
-                        
-                        addEditButton($element, 'manual_content', postId);
+                    try {
+                        var $element = $(selector);
+                        if ($element.length) {
+                            console.log('[WPFE] Manually adding button to:', selector);
+                            
+                            // Use fallback post ID if not defined
+                            var pid = postId || (wpfe_data ? wpfe_data.post_id : 0);
+                            
+                            $element.addClass('wpfe-editable')
+                                .attr('data-wpfe-field', 'manual_content')
+                                .attr('data-wpfe-post-id', pid)
+                                .attr('data-wpfe-identified-by', 'manual');
+                            
+                            try {
+                                addEditButton($element, 'manual_content', pid);
+                            } catch (btnErr) {
+                                console.error('[WPFE] Error adding edit button in manual mode:', btnErr);
+                            }
                         
                         $element.css({
                             'outline': '5px solid blue',
@@ -1749,6 +1784,10 @@ WPFE.elements = (function($) {
                         return 'Button added to ' + selector;
                     } else {
                         return 'Element not found: ' + selector;
+                    }
+                    } catch (e) {
+                        console.error('[WPFE] Error in wpfeAddButtonTo:', e);
+                        return 'Error adding button: ' + e.message;
                     }
                 };
             }, 2000);
@@ -1824,7 +1863,15 @@ WPFE.elements = (function($) {
             }
             
             // Cache all edit buttons after initialization
-            WPFE.core.setEditButtons($('.wpfe-edit-button'));
+            try {
+                if (typeof WPFE.core.setEditButtons === 'function') {
+                    WPFE.core.setEditButtons($('.wpfe-edit-button'));
+                } else {
+                    console.warn('[WPFE] core.setEditButtons is not a function - cannot cache edit buttons');
+                }
+            } catch (e) {
+                console.error('[WPFE] Error caching edit buttons:', e);
+            }
             
             // Add MutationObserver to watch for dynamic content changes more efficiently
             if (window.MutationObserver) {
@@ -1868,9 +1915,13 @@ WPFE.elements = (function($) {
                         
                         // Only refresh if content was actually added and might contain editable elements
                         if (contentChanged && editableElementsAffected) {
-                            WPFE.elements.refreshElements();
-                            if (wpfe_data.debug_mode) {
-                                console.log('DOM changed - refreshing editable elements');
+                            try {
+                                WPFE.elements.refreshElements();
+                                if (wpfe_data.debug_mode) {
+                                    console.log('DOM changed - refreshing editable elements');
+                                }
+                            } catch (refreshErr) {
+                                console.error('[WPFE] Error refreshing elements after DOM change:', refreshErr);
                             }
                         }
                         
@@ -1898,7 +1949,12 @@ WPFE.elements = (function($) {
             $(window).on('load', function() {
                 // Refresh editable elements when all content is loaded
                 setTimeout(function() {
-                    WPFE.elements.refreshElements();
+                    try {
+                        WPFE.elements.refreshElements();
+                        console.log('[WPFE] Elements refreshed after window load event');
+                    } catch (refreshErr) {
+                        console.error('[WPFE] Error refreshing elements after window load:', refreshErr);
+                    }
                 }, 500);
             });
         },
@@ -1922,7 +1978,15 @@ WPFE.elements = (function($) {
             });
             
             // Update the edit buttons cache
-            WPFE.core.setEditButtons($('.wpfe-edit-button'));
+            try {
+                if (typeof WPFE.core.setEditButtons === 'function') {
+                    WPFE.core.setEditButtons($('.wpfe-edit-button'));
+                } else {
+                    console.warn('[WPFE] core.setEditButtons is not a function - cannot cache edit buttons');
+                }
+            } catch (e) {
+                console.error('[WPFE] Error updating edit buttons cache:', e);
+            }
             
             // Trigger an event for other components to hook into
             $(document).trigger('wpfe:elements_refreshed');

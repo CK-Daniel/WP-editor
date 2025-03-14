@@ -9,11 +9,35 @@ var WPFE = WPFE || {};
 // Create fallback wpfe_data if not properly localized by WordPress
 if (typeof window.wpfe_data === 'undefined') {
     console.error('[WPFE] CRITICAL ERROR: wpfe_data is not defined! Creating emergency fallback.');
+    
+    // Try to extract post ID from body class - common in WordPress themes
+    var postId = 0;
+    try {
+        var bodyElement = document.querySelector('body');
+        if (bodyElement) {
+            var bodyClass = bodyElement.className || '';
+            var postIdMatch = bodyClass.match(/postid-(\d+)/);
+            if (postIdMatch && postIdMatch[1]) {
+                postId = parseInt(postIdMatch[1], 10);
+                console.log('[WPFE] Extracted post ID from body class:', postId);
+            } else {
+                // Try alternative formats used by some themes
+                var altMatch = bodyClass.match(/post-(\d+)/) || bodyClass.match(/single-post-(\d+)/);
+                if (altMatch && altMatch[1]) {
+                    postId = parseInt(altMatch[1], 10);
+                    console.log('[WPFE] Extracted post ID from alternative body class format:', postId);
+                }
+            }
+        }
+    } catch (e) {
+        console.error('[WPFE] Error extracting post ID from body class:', e);
+    }
+    
+    // Create the emergency fallback object
     window.wpfe_data = {
         ajax_url: '/wp-admin/admin-ajax.php',
         nonce: '',
-        post_id: document.querySelector('body').className.match(/postid-(\d+)/) ? 
-                document.querySelector('body').className.match(/postid-(\d+)/)[1] : 0,
+        post_id: postId,
         plugin_url: '',
         debug_mode: true,
         button_position: 'top-right',
@@ -23,16 +47,19 @@ if (typeof window.wpfe_data === 'undefined') {
         page_content: {},
         is_acf_active: false,
         emergency_fallback: true,
+        force_visible: true, // Force button visibility in emergency mode
         i18n: {
             edit: 'Edit',
             save: 'Save',
             cancel: 'Cancel',
-            error: 'Error'
+            error: 'Error',
+            select_image: 'Select Image',
+            remove: 'Remove'
         }
     };
 }
 
-// Add initialization markers
+// Add initialization markers - ensure this exists before modules load
 WPFE.modulesReady = {
     core: false,
     utils: false,
@@ -45,6 +72,9 @@ WPFE.modulesReady = {
     acf: false,
     main: false
 };
+
+// Ensure modules object exists
+WPFE.modules = WPFE.modules || {};
 
 // Add basic debugging features even before modules are loaded
 WPFE.debug = {
@@ -114,6 +144,12 @@ jQuery(document).ready(function($) {
     WPFE.debug.log('Document ready, waiting for modules to load...');
     WPFE.debug.checkDataAvailability();
     
+    // Create necessary DOM elements if they don't exist
+    if ($('#wpfe-editor-sidebar').length === 0) {
+        console.warn('[WPFE] Editor sidebar not found in DOM. Creating emergency sidebar elements.');
+        createEmergencySidebar();
+    }
+    
     // Check for script elements to ensure files are being loaded
     var scriptCheck = function() {
         var scriptElements = document.querySelectorAll('script[src*="wp-frontend-editor"]');
@@ -169,6 +205,69 @@ jQuery(document).ready(function($) {
         scriptCheck();
     }, 3000);
 });
+
+// Function to create emergency sidebar elements if they don't exist in the DOM
+// This function helps prevent errors if the wp_footer action doesn't fire properly
+function createEmergencySidebar() {
+    console.warn('[WPFE] Creating emergency sidebar elements - the PHP template may not be loading properly');
+    
+    // If the elements module doesn't exist, create a stub
+    if (!WPFE.elements) {
+        console.warn('[WPFE] Creating emergency stub for elements module');
+        WPFE.elements = {
+            init: function() {
+                console.warn('[WPFE] Using emergency elements stub');
+                return true;
+            },
+            addEditButton: function() {
+                console.warn('[WPFE] Using emergency addEditButton stub');
+            },
+            refreshElements: function() {
+                console.warn('[WPFE] Using emergency refreshElements stub');
+            },
+            isStub: true
+        };
+        WPFE.modulesReady.elements = true;
+    }
+    var sidebarHTML = '<div id="wpfe-editor-sidebar" class="wpfe-editor-sidebar" style="display: none;">' +
+        '<div class="wpfe-editor-sidebar-header">' +
+            '<div class="wpfe-editor-sidebar-header-content">' +
+                '<h2 class="wpfe-editor-sidebar-title">' +
+                    '<span class="wpfe-editor-field-name"></span>' +
+                    '<div class="wpfe-editor-field-badges">' +
+                        '<span class="wpfe-editor-field-type"></span>' +
+                        '<span class="wpfe-editor-field-source"></span>' +
+                    '</div>' +
+                '</h2>' +
+            '</div>' +
+            '<div class="wpfe-editor-sidebar-controls">' +
+                '<button type="button" class="wpfe-editor-sidebar-minimize">' +
+                    '<span class="dashicons dashicons-minus"></span>' +
+                '</button>' +
+                '<button type="button" class="wpfe-editor-sidebar-close">' +
+                    '<span class="dashicons dashicons-no-alt"></span>' +
+                '</button>' +
+            '</div>' +
+        '</div>' +
+        '<div class="wpfe-editor-sidebar-content">' +
+            '<div class="wpfe-editor-sidebar-fields"></div>' +
+        '</div>' +
+        '<div class="wpfe-editor-sidebar-footer">' +
+            '<div class="wpfe-editor-sidebar-actions">' +
+                '<button type="button" class="wpfe-editor-sidebar-cancel">Cancel</button>' +
+                '<button type="button" class="wpfe-editor-sidebar-save">Save Changes</button>' +
+            '</div>' +
+        '</div>' +
+    '</div>';
+    
+    var overlayHTML = '<div id="wpfe-editor-overlay" class="wpfe-editor-overlay" style="display: none;"></div>';
+    
+    // Append the emergency elements to the body
+    jQuery('body').append(sidebarHTML);
+    jQuery('body').append(overlayHTML);
+    
+    console.log('[WPFE] Emergency sidebar and overlay elements created');
+}
 
 // The original code has been refactored into:
 // - modules/core.js - Core functionality and initialization

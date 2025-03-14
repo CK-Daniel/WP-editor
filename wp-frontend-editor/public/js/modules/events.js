@@ -59,18 +59,49 @@ WPFE.events = (function($) {
             }
             
             // Get sidebar and overlay elements
-            var sidebar = WPFE.core.getSidebar();
-            var overlay = WPFE.core.getOverlay();
+            var sidebar, overlay;
+            try {
+                sidebar = WPFE.core.getSidebar();
+                overlay = WPFE.core.getOverlay();
+            } catch (e) {
+                console.error('Cannot open editor: Error getting UI elements:', e);
+                
+                // Last-resort emergency element creation
+                if (!$('#wpfe-editor-sidebar').length) {
+                    console.warn('Creating emergency sidebar elements in openEditor');
+                    $('body').append('<div id="wpfe-editor-sidebar" class="wpfe-editor-sidebar" style="display:none;"></div>');
+                    $('body').append('<div id="wpfe-editor-overlay" class="wpfe-editor-overlay" style="display:none;"></div>');
+                    
+                    // Try again
+                    try {
+                        sidebar = WPFE.core.getSidebar();
+                        overlay = WPFE.core.getOverlay();
+                    } catch (e2) {
+                        console.error('Fatal error: Cannot create UI elements:', e2);
+                        return false;
+                    }
+                }
+            }
             
             // Verify required elements exist
             if (!sidebar || !sidebar.length) {
                 console.error('Cannot open editor: Sidebar element not found');
-                return false;
+                // Create emergency sidebar
+                $('body').append('<div id="wpfe-editor-sidebar" class="wpfe-editor-sidebar" style="display:none;position:fixed;right:0;top:0;width:400px;height:100%;background:#fff;z-index:999999;"></div>');
+                sidebar = $('#wpfe-editor-sidebar');
+                if (!sidebar.length) {
+                    return false;
+                }
             }
             
             if (!overlay || !overlay.length) {
                 console.error('Cannot open editor: Overlay element not found');
-                return false;
+                // Create emergency overlay
+                $('body').append('<div id="wpfe-editor-overlay" class="wpfe-editor-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999998;"></div>');
+                overlay = $('#wpfe-editor-overlay');
+                if (!overlay.length) {
+                    return false;
+                }
             }
             
             // Update state
