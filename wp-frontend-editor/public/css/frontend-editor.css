@@ -68,19 +68,27 @@
     cursor: pointer !important;
     min-height: 20px !important;
     min-width: 20px !important;
-    /* Add a small outline always to make editable areas more noticeable */
-    outline: 1px dotted rgba(56, 88, 233, 0.2) !important;
+    /* Make editable areas more noticeable */
+    outline: 2px dotted rgba(56, 88, 233, 0.5) !important; /* More visible outline */
     outline-offset: 2px !important;
     display: block !important; /* Ensure the element is block level for proper button positioning */
     z-index: 1 !important; /* Establish a stacking context */
+    background-color: rgba(56, 88, 233, 0.03) !important; /* Very subtle background tint */
+}
+
+/* Debug mode makes elements more obvious */
+.wpfe-debug-mode .wpfe-editable {
+    outline: 2px dashed rgba(255, 0, 0, 0.5) !important;
+    background-color: rgba(255, 0, 0, 0.05) !important;
 }
 
 /* Highlight effect when editable elements are hovered */
 .wpfe-editable:hover {
-    outline: 2px dashed var(--wpfe-primary) !important;
+    outline: 2px solid var(--wpfe-primary) !important; /* Solid outline on hover */
     outline-offset: 2px !important;
-    z-index: 2 !important; /* Ensure the element is above others when hovered */
-    box-shadow: 0 0 0 1px rgba(56, 88, 233, 0.1) !important;
+    z-index: 10 !important; /* Ensure the element is above others when hovered */
+    box-shadow: 0 0 10px rgba(56, 88, 233, 0.3) !important; /* More pronounced shadow */
+    background-color: rgba(56, 88, 233, 0.08) !important; /* Slightly stronger background tint on hover */
 }
 
 /* Strong highlight for the currently active editable element */
@@ -119,14 +127,15 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    opacity: 0;
+    opacity: 1; /* CHANGED: Always visible for debugging */
     pointer-events: auto !important; /* Ensure buttons are clickable */
     transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease !important;
     min-width: 36px !important;
     min-height: 36px !important;
     text-transform: none !important;
-    transform: scale(0.9) translateY(5px);
+    transform: scale(1) translateY(0); /* CHANGED: No initial transform */
     animation: none !important; /* Prevent theme animations from affecting our button */
+    visibility: visible !important; /* CHANGED: Always visible */
 }
 
 /* Button positioning - more visible positions */

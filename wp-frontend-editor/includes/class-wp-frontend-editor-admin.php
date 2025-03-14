@@ -804,7 +804,8 @@ class WP_Frontend_Editor_Admin {
      * @param string $hook The current admin page.
      */
     public function enqueue_admin_scripts( $hook ) {
-        if ( 'settings_page_wp-frontend-editor' !== $hook ) {
+        // Only load on our plugin's admin pages
+        if ( strpos( $hook, 'wp-frontend-editor' ) === false ) {
             return;
         }
 
@@ -821,6 +822,7 @@ class WP_Frontend_Editor_Admin {
             file_put_contents( $icon_path, $svg_content );
         }
 
+        // Load the main admin styles for all plugin pages
         wp_enqueue_style(
             'wp-frontend-editor-admin',
             WPFE_PLUGIN_URL . 'admin/css/admin.css',

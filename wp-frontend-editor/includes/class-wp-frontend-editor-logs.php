@@ -119,6 +119,7 @@ class WP_Frontend_Editor_Logs {
      * @param string $hook The current admin page.
      */
     public function enqueue_scripts( $hook ) {
+        // Check if this is our logs page
         if ( 'wp-frontend-editor_page_wp-frontend-editor-logs' !== $hook ) {
             return;
         }
@@ -141,11 +142,19 @@ class WP_Frontend_Editor_Logs {
             '1.12.1'
         );
         
-        // Enqueue logs style
+        // First enqueue the main admin CSS for consistent styling
+        wp_enqueue_style(
+            'wp-frontend-editor-admin',
+            WPFE_PLUGIN_URL . 'admin/css/admin.css',
+            array( 'dashicons' ),
+            WPFE_VERSION
+        );
+        
+        // Then enqueue logs-specific styles
         wp_enqueue_style(
             'wpfe-logs',
             WPFE_PLUGIN_URL . 'admin/css/logs.css',
-            array( 'dashicons' ),
+            array( 'dashicons', 'wp-frontend-editor-admin' ),
             WPFE_VERSION
         );
         

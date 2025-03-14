@@ -239,8 +239,11 @@ WPFE.events = (function($) {
                 mouseY = e.pageY;
             });
             
-            // Edit button click
-            $(document).on('click', '.wpfe-edit-button', function(e) {
+            // Debug log for events initialization
+            console.log('WPFE Events initializing... Found ' + $('.wpfe-edit-button').length + ' edit buttons.');
+            
+            // Add click handlers with more debug info
+            $(document).off('click', '.wpfe-edit-button').on('click', '.wpfe-edit-button', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 
@@ -248,7 +251,39 @@ WPFE.events = (function($) {
                 var fieldName = $button.data('wpfe-field');
                 var postId = $button.data('wpfe-post-id');
                 
-                openEditor(fieldName, postId);
+                console.log('Edit button clicked: ', fieldName, postId);
+                
+                // Highlight the editable element
+                $('.wpfe-editable').removeClass('wpfe-currently-editing');
+                var $editableElement = $('[data-wpfe-field="' + fieldName + '"][data-wpfe-post-id="' + postId + '"]');
+                if ($editableElement.length) {
+                    $editableElement.addClass('wpfe-currently-editing');
+                    console.log('Found editable element for: ', fieldName);
+                } else {
+                    console.warn('No editable element found for: ', fieldName);
+                }
+                
+                // Open the editor
+                var result = openEditor(fieldName, postId);
+                console.log('Editor opened: ', result);
+            });
+            
+            // Also add a direct handler to editable elements
+            $(document).off('click', '.wpfe-editable').on('click', '.wpfe-editable', function(e) {
+                // Skip if we clicked on the button itself
+                if ($(e.target).closest('.wpfe-edit-button').length) {
+                    return;
+                }
+                
+                // Open editor for this element
+                var $editable = $(this);
+                var fieldName = $editable.data('wpfe-field');
+                var postId = $editable.data('wpfe-post-id');
+                
+                if (fieldName && postId) {
+                    console.log('Editable element clicked: ', fieldName, postId);
+                    openEditor(fieldName, postId);
+                }
             });
             
             // Close button click
