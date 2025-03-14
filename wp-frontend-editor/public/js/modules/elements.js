@@ -25,16 +25,18 @@ WPFE.elements = (function($) {
     function addEditButton($element, fieldName, postId) {
         // Safety checks
         if (!$element || !$element.length || !fieldName) {
-            if (wpfe_data.debug_mode) {
-                console.warn('Cannot add edit button: Invalid element or field name', fieldName);
-            }
+            console.warn('[WPFE] Cannot add edit button: Invalid element or field name', fieldName);
             return;
         }
         
         try {
+            console.log('[WPFE] Adding edit button for field:', fieldName, 'to element:', $element.prop('tagName'), $element.attr('class'));
+            
             // Set button position class based on settings
             var buttonPosition = wpfe_data.button_position || 'top-right';
             var positionClass = 'wpfe-button-' + buttonPosition;
+            
+            console.log('[WPFE] Button position:', buttonPosition);
             
             // Set button style based on settings
             var buttonStyle = wpfe_data.button_style || 'icon-only';
@@ -49,7 +51,11 @@ WPFE.elements = (function($) {
             }
             
             // Remove any existing edit buttons to prevent duplicates
-            $element.find('.wpfe-edit-button').remove();
+            var existingButtons = $element.find('.wpfe-edit-button');
+            if (existingButtons.length > 0) {
+                console.log('[WPFE] Removing', existingButtons.length, 'existing buttons');
+                existingButtons.remove();
+            }
             
             // Add edit button with accessibility improvements
             var $button = $('<button type="button" class="wpfe-edit-button ' + positionClass + '" data-wpfe-field="' + fieldName + '" data-wpfe-post-id="' + postId + '" aria-label="' + (wpfe_data.i18n.edit_field || 'Edit') + ' ' + fieldName + '"></button>');
@@ -57,10 +63,12 @@ WPFE.elements = (function($) {
             
             // Add the button to the element (always at the end for proper z-index)
             $element.append($button);
+            console.log('[WPFE] Button added to DOM');
             
             // Ensure the element has position:relative if it's static
             if ($element.css('position') === 'static') {
                 $element.css('position', 'relative');
+                console.log('[WPFE] Set position:relative on element');
             }
             
             // Optimize button position for visibility
@@ -69,13 +77,28 @@ WPFE.elements = (function($) {
             // Add hover effect if enabled
             if (wpfe_data.button_hover) {
                 $button.addClass('wpfe-button-hover');
+                console.log('[WPFE] Added wpfe-button-hover class');
             }
             
             // Add a data attribute to track button status
             $element.attr('data-wpfe-has-button', 'true');
             
+            // IMPORTANT: Force buttons to be always visible in debug mode
+            if (wpfe_data.debug_mode) {
+                console.log('[WPFE] Debug mode active - making button permanently visible');
+                $button.css({
+                    'opacity': '1',
+                    'transform': 'scale(1)',
+                    'visibility': 'visible',
+                    'background-color': 'red', // Make it obvious for debugging
+                    'z-index': '9999999'
+                });
+                return;
+            }
+            
             // Ensure button is visible on hover with a small delay
             $element.on('mouseenter', function() {
+                console.log('[WPFE] Element mouseenter event triggered');
                 $button.css({
                     'opacity': '1',
                     'transform': 'scale(1) translateY(0)',
@@ -84,6 +107,7 @@ WPFE.elements = (function($) {
             });
             
             $element.on('mouseleave', function() {
+                console.log('[WPFE] Element mouseleave event triggered');
                 // Add a small delay before hiding for better usability
                 setTimeout(function() {
                     if (!$button.is(':hover')) {
@@ -97,6 +121,7 @@ WPFE.elements = (function($) {
             
             // Also ensure the button itself has proper hover behavior
             $button.on('mouseenter', function() {
+                console.log('[WPFE] Button mouseenter event triggered');
                 $(this).css({
                     'opacity': '1',
                     'transform': 'scale(1.05)',
@@ -105,6 +130,7 @@ WPFE.elements = (function($) {
             });
             
             $button.on('mouseleave', function() {
+                console.log('[WPFE] Button mouseleave event triggered');
                 if (!$element.is(':hover')) {
                     $(this).css({
                         'opacity': '0',
@@ -114,9 +140,7 @@ WPFE.elements = (function($) {
             });
             
         } catch (e) {
-            if (wpfe_data.debug_mode) {
-                console.error('Error adding edit button:', e);
-            }
+            console.error('[WPFE] Error adding edit button:', e);
         }
     }
 
@@ -385,84 +409,1017 @@ WPFE.elements = (function($) {
          * Initialize editable elements.
          */
         init: function() {
-            // Check for editable elements with core WordPress fields
+            console.log('[WPFE] Advanced Elements module initializing with AI-inspired multi-strategy detection');
+            console.log('[WPFE] Debug mode active:', wpfe_data.debug_mode ? 'Yes' : 'No');
+            
+            // =====================================================================
+            // INTELLIGENT FIELD DETECTION SYSTEM
+            // Using multiple strategies with confidence scoring
+            // =====================================================================
+            
+            // Track identified elements with confidence scores
+            var identifiedElements = [];
+            var confidenceThreshold = 0.5; // Minimum confidence to mark as editable
+            
+            // Get page content data for all potential matching strategies
+            var pageContent = wpfe_data.page_content || {};
+            var postId = wpfe_data.post_id;
+            
+            console.log('[WPFE] Page content available for matching:', Object.keys(pageContent));
+            
+            // =====================================================================
+            // STRATEGY 1: CONTENT MATCHING USING ACTUAL FIELD DATA
+            // Gets actual post data and compares to DOM content
+            // =====================================================================
+            function findElementsByContentMatching() {
+                console.log('[WPFE] Running content-based field detection');
+                var matches = [];
+                
+                // Only run if we have page content data
+                if (!pageContent || Object.keys(pageContent).length === 0) {
+                    console.log('[WPFE] No page content data available for content matching');
+                    return matches;
+                }
+                
+                // For each field in the content data, find potential matches
+                Object.keys(pageContent).forEach(function(fieldName) {
+                    var fieldValue = pageContent[fieldName];
+                    
+                    // Skip empty fields or non-string values
+                    if (!fieldValue || typeof fieldValue !== 'string' || fieldValue.trim() === '') {
+                        return;
+                    }
+                    
+                    console.log('[WPFE] Searching for field:', fieldName, 'with value length:', fieldValue.length);
+                    
+                    // Prepare the field value for smart matching
+                    var normalizedFieldValue = normalizeText(fieldValue);
+                    var valueSnippet = normalizedFieldValue.substring(0, 50) + (normalizedFieldValue.length > 50 ? '...' : '');
+                    
+                    console.log('[WPFE] Field value snippet:', valueSnippet);
+                    
+                    // Find ALL text-containing elements in the DOM
+                    var candidateElements = [];
+                    
+                    // Different scanning strategies based on field length
+                    if (normalizedFieldValue.length < 100) {
+                        // For short text, scan headings and small text containers
+                        $('h1, h2, h3, .title, header *, .heading, p, div:not(:has(div))').each(function() {
+                            var $element = $(this);
+                            // Skip elements with almost no text or with many children
+                            if ($element.text().trim().length > 5 && $element.children().length < 5) {
+                                candidateElements.push($element);
+                            }
+                        });
+                    } else {
+                        // For longer content, scan potential content containers
+                        $('article, .content, main, .entry-content, .post-content, section, [class*="content"], div:contains(' + 
+                          normalizedFieldValue.substring(0, 20).replace(/[^\w\s]/g, '') + ')').each(function() {
+                            var $element = $(this);
+                            if ($element.text().trim().length > 50) {
+                                candidateElements.push($element);
+                            }
+                        });
+                    }
+                    
+                    console.log('[WPFE] Found', candidateElements.length, 'candidate elements for', fieldName);
+                    
+                    // For each candidate, calculate similarity to field content
+                    candidateElements.forEach(function($element) {
+                        var elementText = $element.text().trim();
+                        var normalizedElementText = normalizeText(elementText);
+                        
+                        // Calculate similarity score (0-1)
+                        var similarity = calculateContentSimilarity(normalizedElementText, normalizedFieldValue);
+                        
+                        // Log high-confidence matches for debugging
+                        if (similarity > 0.7) {
+                            console.log('[WPFE] High similarity match:', similarity.toFixed(2), 
+                                        'Element:', $element.prop('tagName'), 
+                                        'Class:', $element.attr('class') || 'none');
+                        }
+                        
+                        // Only consider good matches
+                        if (similarity > 0.5) {
+                            matches.push({
+                                element: $element,
+                                fieldName: fieldName,
+                                confidence: similarity,
+                                strategy: 'content-match',
+                                found: true
+                            });
+                        }
+                    });
+                });
+                
+                return matches;
+            }
+            
+            // Text normalization helper - safely cleans up text for comparison
+            function normalizeText(text) {
+                try {
+                    // Handle non-string inputs gracefully
+                    if (!text) return '';
+                    if (typeof text !== 'string') {
+                        text = String(text);
+                    }
+                    
+                    return text.trim()
+                        .toLowerCase()
+                        .replace(/\s+/g, ' ')     // Replace multiple spaces with single space
+                        .replace(/[\r\n\t]/g, ' ') // Replace newlines and tabs with space
+                        .replace(/[^\w\s.,?!-]/g, ''); // Remove special characters except basic punctuation
+                } catch (e) {
+                    console.error('[WPFE] Error in normalizeText:', e);
+                    return '';
+                }
+            }
+            
+            // Calculate similarity between two text strings - optimized for performance and safety
+            function calculateContentSimilarity(str1, str2) {
+                try {
+                    // Input validation
+                    if (!str1 || !str2) return 0;
+                    if (typeof str1 !== 'string' || typeof str2 !== 'string') {
+                        str1 = String(str1);
+                        str2 = String(str2);
+                    }
+                    
+                    // Normalize strings
+                    str1 = normalizeText(str1);
+                    str2 = normalizeText(str2);
+                    
+                    // Handle empty strings after normalization
+                    if (!str1 || !str2) return 0;
+                    
+                    // Exact match
+                    if (str1 === str2) return 1;
+                    
+                    // Quick length check - if strings are drastically different sizes, they're probably not related
+                    var lengthRatio = Math.min(str1.length, str2.length) / Math.max(str1.length, str2.length);
+                    if (lengthRatio < 0.3) {
+                        return lengthRatio * 0.5; // Still give some small confidence if text appears in a much larger context
+                    }
+                    
+                    // One string contains the other
+                    if (str1.indexOf(str2) !== -1) return 0.8 * (str2.length / str1.length);
+                    if (str2.indexOf(str1) !== -1) return 0.8 * (str1.length / str2.length);
+                    
+                    // Performance optimization: For very long strings, only compare first 500 chars
+                    if (str1.length > 500 || str2.length > 500) {
+                        var shortStr1 = str1.substring(0, 500);
+                        var shortStr2 = str2.substring(0, 500);
+                        
+                        // If beginning parts match well, that's often enough
+                        if (shortStr1.indexOf(shortStr2.substring(0, 100)) !== -1 || 
+                            shortStr2.indexOf(shortStr1.substring(0, 100)) !== -1) {
+                            return 0.75;
+                        }
+                    }
+                    
+                    // Check for first paragraph/sentence match (good for titles and short content)
+                    var firstPara1 = str1.split(/[.!?]\s+/)[0] || str1;
+                    var firstPara2 = str2.split(/[.!?]\s+/)[0] || str2;
+                    
+                    if (firstPara1 === firstPara2) return 0.9;
+                    
+                    // Check for significant words in common (faster than substring for long text)
+                    var words1 = str1.split(/\s+/);
+                    var words2 = str2.split(/\s+/);
+                    
+                    // Optimization: Only use first 100 words for very long texts
+                    if (words1.length > 100) words1 = words1.slice(0, 100);
+                    if (words2.length > 100) words2 = words2.slice(0, 100);
+                    
+                    var sharedWords = 0;
+                    var significantWords = 0;
+                    
+                    // Create a Set for faster lookups in large word arrays
+                    var words2Set = new Set(words2);
+                    
+                    words1.forEach(function(word) {
+                        // Only count significant words (longer than 3 chars)
+                        if (word.length > 3) {
+                            significantWords++;
+                            if (words2Set.has(word)) sharedWords++;
+                        }
+                    });
+                    
+                    // If we have significant shared words, that's a good signal
+                    if (significantWords > 0 && sharedWords > 0) {
+                        return 0.3 + (0.6 * (sharedWords / significantWords));
+                    }
+                    
+                    // Last resort for important but short content: common substring
+                    if (str1.length < 200 && str2.length < 200) {
+                        var longestCommonSubstring = findLongestCommonSubstring(str1, str2);
+                        var lcsLength = longestCommonSubstring.length;
+                        
+                        if (lcsLength > 15) {
+                            return 0.5 + (0.4 * (lcsLength / Math.max(str1.length, str2.length)));
+                        }
+                    }
+                    
+                    // Minimal confidence for very little similarity
+                    return 0.1;
+                } catch (e) {
+                    console.error('[WPFE] Error in calculateContentSimilarity:', e);
+                    return 0;
+                }
+            }
+            
+            // Find longest common substring - optimized for speed and memory
+            function findLongestCommonSubstring(str1, str2) {
+                try {
+                    if (!str1 || !str2) return '';
+                    
+                    // For very long strings, do suffix-based optimization
+                    if (str1.length > 1000 || str2.length > 1000) {
+                        // Just check first 500 chars for long content
+                        str1 = str1.substring(0, 500);
+                        str2 = str2.substring(0, 500);
+                    }
+                    
+                    // Use dynamic programming approach for smaller strings
+                    var m = str1.length;
+                    var n = str2.length;
+                    var max = 0;
+                    var end = 0;
+                    
+                    // Create matrix only for current and previous row to save memory
+                    var prevRow = Array(n+1).fill(0);
+                    var currRow = Array(n+1).fill(0);
+                    
+                    for (var i = 1; i <= m; i++) {
+                        for (var j = 1; j <= n; j++) {
+                            if (str1[i-1] === str2[j-1]) {
+                                currRow[j] = prevRow[j-1] + 1;
+                                if (currRow[j] > max) {
+                                    max = currRow[j];
+                                    end = i;
+                                }
+                            } else {
+                                currRow[j] = 0;
+                            }
+                        }
+                        // Swap rows for next iteration
+                        var temp = prevRow;
+                        prevRow = currRow;
+                        currRow = temp;
+                        currRow.fill(0);
+                    }
+                    
+                    return max > 0 ? str1.substring(end - max, end) : '';
+                } catch (e) {
+                    console.error('[WPFE] Error in findLongestCommonSubstring:', e);
+                    return '';
+                }
+            }
+            
+            // =====================================================================
+            // STRATEGY 2: SELECTOR-BASED IDENTIFICATION
+            // Uses selectors with theme/builder detection
+            // =====================================================================
+            function findElementsBySelectors() {
+                console.log('[WPFE] Running selector-based field detection');
+                var matches = [];
+                
+                // Detect builder/theme first
+                var detectedFrameworks = [];
+                // Elementor detection
+                if ($('body').hasClass('elementor-page') || $('.elementor').length)
+                    detectedFrameworks.push('elementor');
+                
+                // WPBakery detection
+                if ($('.vc_row').length || $('[class*="vc_"]').length)
+                    detectedFrameworks.push('wpbakery');
+                
+                // Divi detection
+                if ($('.et-db').length || $('.et_pb_section').length)
+                    detectedFrameworks.push('divi');
+                
+                // Beaver Builder detection
+                if ($('.fl-module').length)
+                    detectedFrameworks.push('beaver');
+                
+                // Fusion/Avada detection
+                if ($('.fusion-builder-row').length)
+                    detectedFrameworks.push('fusion');
+                
+                // Oxygen Builder detection
+                if ($('.ct-section').length || $('[class*="-oxy-"]').length)
+                    detectedFrameworks.push('oxygen');
+                
+                // Bricks Builder detection
+                if ($('.brxe-').length || $('[class*="bricks-"]').length)
+                    detectedFrameworks.push('bricks');
+                
+                // Brizy detection
+                if ($('.brz-').length)
+                    detectedFrameworks.push('brizy');
+                
+                // SiteOrigin detection
+                if ($('.panel-grid').length || $('.so-panel').length)
+                    detectedFrameworks.push('siteorigin');
+                
+                // Gutenberg detection
+                if ($('.wp-block').length || $('.block-editor-block-list__block').length)
+                    detectedFrameworks.push('gutenberg');
+                
+                // Theme detection
+                if ($('body').hasClass('kadence'))
+                    detectedFrameworks.push('kadence');
+                if ($('body').hasClass('astra'))
+                    detectedFrameworks.push('astra');
+                
+                console.log('[WPFE] Detected frameworks:', detectedFrameworks.join(', ') || 'none');
+                
+                // Add helpful debug logs
+                if (wpfe_data.debug_mode) {
+                    console.log('[WPFE] Document body class:', $('body').attr('class'));
+                    console.log('[WPFE] Total elements in DOM:', $('*').length);
+                    console.log('[WPFE] Potential containers:', $('main, article, .content, .site-content').length);
+                }
+                
+                // Define field selector sets with confidence scores
+                var fieldSelectorSets = {
+                    post_title: [
+                        { selector: '.entry-title, .post-title', confidence: 0.9 },
+                        { selector: 'h1.title, h1.page-title, .site-title h1', confidence: 0.8 },
+                        { selector: 'article h1:first-child, header h1, .wp-block-post-title', confidence: 0.7 },
+                        { selector: '.elementor-heading-title.elementor-size-xl, .elementor-heading-title.elementor-size-xxl', confidence: 0.6 },
+                        { selector: 'h1', confidence: 0.5 },
+                        // Additional title selectors for various themes
+                        { selector: '.post-header h1, .entry-header h1, .page-header h1', confidence: 0.85 },
+                        { selector: '[class*="title"]:header, [class*="heading"]:header', confidence: 0.7 },
+                        { selector: '.title-container h1, .page-title-inner h1', confidence: 0.75 },
+                        { selector: '.main-title, .site-title', confidence: 0.7 }
+                    ],
+                    post_content: [
+                        { selector: '.entry-content, .post-content', confidence: 0.9 },
+                        { selector: 'article .content-area, .wp-block-post-content', confidence: 0.8 },
+                        { selector: '.content, main > .container', confidence: 0.7 },
+                        { selector: 'article > div, .post > div', confidence: 0.6 },
+                        { selector: 'main, article', confidence: 0.5 },
+                        // Additional content selectors
+                        { selector: '.post-body, .entry-body, .page-content, .post-text', confidence: 0.85 },
+                        { selector: '.main-content, #content, .site-content', confidence: 0.7 },
+                        { selector: '.single-content, .post-inner, .page-inner', confidence: 0.75 },
+                        { selector: '.type-post, .type-page', confidence: 0.65 }
+                    ],
+                    post_excerpt: [
+                        { selector: '.entry-summary, .excerpt, .post-excerpt', confidence: 0.9 },
+                        { selector: '.summary, .post-summary', confidence: 0.7 },
+                        // Additional excerpt selectors
+                        { selector: '.post-excerpt-container, .excerpt-container', confidence: 0.85 },
+                        { selector: '.card-text, .entry-intro', confidence: 0.7 }
+                    ],
+                    featured_image: [
+                        { selector: '.post-thumbnail img, .featured-image img', confidence: 0.9 },
+                        { selector: '.wp-post-image, .attachment-post-thumbnail', confidence: 0.8 },
+                        { selector: 'article img:first, .entry-content img:first', confidence: 0.6 }
+                    ]
+                };
+                
+                // Add framework-specific selectors
+                // Elementor selectors
+                if (detectedFrameworks.includes('elementor')) {
+                    fieldSelectorSets.post_title.push({ selector: '.elementor-heading-title', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.elementor-widget-text-editor, .elementor-text-editor', confidence: 0.7 });
+                    fieldSelectorSets.featured_image.push({ selector: '.elementor-widget-image img', confidence: 0.7 });
+                }
+                
+                // Divi selectors
+                if (detectedFrameworks.includes('divi')) {
+                    fieldSelectorSets.post_title.push({ selector: '.et_pb_text h1, .et_pb_title_container h1', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.et_pb_text_inner, .et_pb_post_content', confidence: 0.7 });
+                    fieldSelectorSets.featured_image.push({ selector: '.et_pb_image img', confidence: 0.7 });
+                }
+                
+                // WPBakery selectors
+                if (detectedFrameworks.includes('wpbakery')) {
+                    fieldSelectorSets.post_title.push({ selector: '.wpb_text_column h1', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.wpb_text_column', confidence: 0.7 });
+                    fieldSelectorSets.featured_image.push({ selector: '.wpb_single_image img', confidence: 0.7 });
+                }
+                
+                // Oxygen Builder selectors
+                if (detectedFrameworks.includes('oxygen')) {
+                    fieldSelectorSets.post_title.push({ selector: '.oxy-rich-text h1, .oxy-post-title', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.oxy-rich-text, .oxy-inner-content', confidence: 0.7 });
+                    fieldSelectorSets.featured_image.push({ selector: '.oxy-post-image img', confidence: 0.7 });
+                }
+                
+                // Bricks Builder selectors
+                if (detectedFrameworks.includes('bricks')) {
+                    fieldSelectorSets.post_title.push({ selector: '.brxe-heading, [data-script-id*="heading"]', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.brxe-text, [data-script-id*="text"]', confidence: 0.7 });
+                    fieldSelectorSets.featured_image.push({ selector: '.brxe-image img', confidence: 0.7 });
+                }
+                
+                // Brizy selectors
+                if (detectedFrameworks.includes('brizy')) {
+                    fieldSelectorSets.post_title.push({ selector: '.brz-title, .brz-heading', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.brz-text, .brz-rich-text', confidence: 0.7 });
+                    fieldSelectorSets.featured_image.push({ selector: '.brz-image img', confidence: 0.7 });
+                }
+                
+                // SiteOrigin selectors
+                if (detectedFrameworks.includes('siteorigin')) {
+                    fieldSelectorSets.post_title.push({ selector: '.so-widget-sow-headline h1', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.so-widget-sow-editor, .panel-widget-style', confidence: 0.7 });
+                    fieldSelectorSets.featured_image.push({ selector: '.so-widget-image', confidence: 0.7 });
+                }
+                
+                // Beaver Builder selectors
+                if (detectedFrameworks.includes('beaver')) {
+                    fieldSelectorSets.post_title.push({ selector: '.fl-heading, .fl-module-heading', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.fl-rich-text, .fl-module-rich-text', confidence: 0.7 });
+                    fieldSelectorSets.featured_image.push({ selector: '.fl-photo-img', confidence: 0.7 });
+                }
+                
+                // Gutenberg selectors
+                if (detectedFrameworks.includes('gutenberg')) {
+                    fieldSelectorSets.post_title.push({ selector: '.wp-block-post-title', confidence: 0.8 });
+                    fieldSelectorSets.post_content.push({ selector: '.wp-block-post-content', confidence: 0.8 });
+                    fieldSelectorSets.featured_image.push({ selector: '.wp-block-post-featured-image img', confidence: 0.8 });
+                }
+                
+                // Theme-specific selectors
+                if (detectedFrameworks.includes('kadence')) {
+                    fieldSelectorSets.post_title.push({ selector: '.entry-title .kadence-title', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.entry-content-wrap, .kadence-content-wrap', confidence: 0.7 });
+                }
+                
+                if (detectedFrameworks.includes('astra')) {
+                    fieldSelectorSets.post_title.push({ selector: '.entry-title .ast-title', confidence: 0.7 });
+                    fieldSelectorSets.post_content.push({ selector: '.ast-post-content-wrap, .ast-content-wrap', confidence: 0.7 });
+                }
+                
+                // Process each field type
+                Object.keys(fieldSelectorSets).forEach(function(fieldName) {
+                    var selectorSets = fieldSelectorSets[fieldName];
+                    
+                    selectorSets.forEach(function(set) {
+                        var elements = $(set.selector);
+                        console.log('[WPFE] Field:', fieldName, 'Selector:', set.selector, 'Elements:', elements.length);
+                        
+                        elements.each(function() {
+                            var $element = $(this);
+                            
+                            // Skip very small or empty elements
+                            if ($element.text().trim().length < 3) {
+                                return;
+                            }
+                            
+                            matches.push({
+                                element: $element,
+                                fieldName: fieldName,
+                                confidence: set.confidence,
+                                strategy: 'selector',
+                                found: true
+                            });
+                        });
+                    });
+                });
+                
+                return matches;
+            }
+            
+            // =====================================================================
+            // STRATEGY 3: SEMANTIC STRUCTURE ANALYSIS
+            // Analyzes page structure and element relationships
+            // =====================================================================
+            function findElementsBySemanticStructure() {
+                console.log('[WPFE] Running semantic structure analysis');
+                var matches = [];
+                
+                // Get main content container
+                var $main = $('main, #main, .main, [role="main"], #content, .content, .site-content, .entry-content').first();
+                var $header = $('header, .header, .site-header, .entry-header').first();
+                
+                // If we found a main container, analyze its children
+                if ($main.length) {
+                    console.log('[WPFE] Main content container found:', $main.prop('tagName'), $main.attr('class'));
+                    
+                    // Find the primary heading (usually post title)
+                    var $mainHeading = $main.find('h1, .entry-title, .post-title, .title').first();
+                    if ($mainHeading.length) {
+                        matches.push({
+                            element: $mainHeading,
+                            fieldName: 'post_title',
+                            confidence: 0.8,
+                            strategy: 'semantic',
+                            found: true
+                        });
+                    }
+                    
+                    // Find main content area (usually largest text container)
+                    var largestTextContainer = findLargestTextContainer($main);
+                    if (largestTextContainer) {
+                        matches.push({
+                            element: largestTextContainer,
+                            fieldName: 'post_content',
+                            confidence: 0.7,
+                            strategy: 'semantic',
+                            found: true
+                        });
+                    }
+                }
+                
+                // If we found a header, check for title elements
+                if ($header.length) {
+                    console.log('[WPFE] Header container found:', $header.prop('tagName'), $header.attr('class'));
+                    
+                    // Find title within header
+                    var $headerTitle = $header.find('h1, h2, .title').first();
+                    if ($headerTitle.length) {
+                        matches.push({
+                            element: $headerTitle,
+                            fieldName: 'post_title',
+                            confidence: 0.85,
+                            strategy: 'semantic',
+                            found: true
+                        });
+                    }
+                }
+                
+                // Check if excerpt might be present
+                var $excerpt = $('.excerpt, .entry-summary, .summary').first();
+                if ($excerpt.length) {
+                    matches.push({
+                        element: $excerpt,
+                        fieldName: 'post_excerpt',
+                        confidence: 0.8,
+                        strategy: 'semantic',
+                        found: true
+                    });
+                }
+                
+                return matches;
+            }
+            
+            // Find the largest text container within an element
+            function findLargestTextContainer($container) {
+                var candidates = [];
+                
+                $container.find('div, section, article').each(function() {
+                    var $element = $(this);
+                    var textLength = $element.text().trim().length;
+                    
+                    // Only consider elements with substantial text
+                    if (textLength > 100) {
+                        candidates.push({
+                            element: $element,
+                            textLength: textLength
+                        });
+                    }
+                });
+                
+                // Sort by text length (descending)
+                candidates.sort(function(a, b) {
+                    return b.textLength - a.textLength;
+                });
+                
+                return candidates.length ? candidates[0].element : null;
+            }
+            
+            // Define common field selectors for legacy support
             var coreFields = [
                 { 
                     name: 'post_title', 
-                    selector: '.entry-title, .post-title, h1.title, h2.title, .page-title, header h1, article h1:first-child, .site-title h1, .wp-block-post-title',
+                    selector: '.entry-title, .post-title, h1.title, h2.title, .page-title',
                     contentType: 'heading',
                     priority: 'high'
                 },
                 { 
                     name: 'post_content', 
-                    selector: '.entry-content, .post-content, .content, .page-content, article .content-area, .wp-block-post-content, .post-text, article .text', 
+                    selector: '.entry-content, .post-content, .content, .page-content', 
                     contentType: 'content',
                     priority: 'medium'
                 },
                 { 
                     name: 'post_excerpt', 
-                    selector: '.entry-summary, .excerpt, .post-excerpt, .post-summary, .wp-block-post-excerpt, .summary',
+                    selector: '.entry-summary, .excerpt, .post-excerpt, .post-summary',
                     contentType: 'excerpt',
                     priority: 'medium' 
                 }
             ];
             
-            // Get page content from server if available
-            var pageContent = wpfe_data.page_content || {};
-            
-            // Process each core field
-            $.each(coreFields, function(index, field) {
-                // Primary selector match
-                var elements = $(field.selector);
-                var foundElements = [];
+            // Add additional discoverable editable fields for better compatibility
+            if (wpfe_data.discover_fields) {
+                console.log('[WPFE] Field discovery mode enabled - adding additional selectors');
                 
-                // Process primary matches first
-                if (elements.length) {
-                    elements.each(function() {
-                        var $element = $(this);
-                        var postId = wpfe_data.post_id;
-                        
-                        // Make sure any static elements get relative positioning
-                        if ($element.css('position') === 'static') {
-                            $element.css('position', 'relative');
-                        }
-                        
-                        // Don't apply to elements that already have the editable class
-                        if (!$element.hasClass('wpfe-editable')) {
-                            // Add editable class and data attributes
-                            $element.addClass('wpfe-editable')
-                                .attr('data-wpfe-field', field.name)
-                                .attr('data-wpfe-post-id', postId)
-                                .attr('data-wpfe-identified-by', 'primary-selector');
-                            
-                            // Create edit button
-                            addEditButton($element, field.name, postId);
-                            foundElements.push($element);
-                        } else {
-                            // For elements that are already editable, make sure they have a working button
-                            if (!$element.attr('data-wpfe-has-button') || $element.find('.wpfe-edit-button').length === 0) {
-                                addEditButton($element, $element.attr('data-wpfe-field') || field.name, $element.attr('data-wpfe-post-id') || postId);
-                            }
-                            foundElements.push($element);
-                        }
+                // For Elementor
+                if ($('.elementor').length) {
+                    console.log('[WPFE] Elementor detected - adding Elementor-specific selectors');
+                    coreFields.push({
+                        name: 'elementor_content',
+                        selector: '.elementor-widget-wrap, .elementor-widget-container',
+                        contentType: 'content',
+                        priority: 'medium'
                     });
                 }
                 
-                // If no elements found with primary selector, try content-based identification
-                if (foundElements.length === 0 && pageContent && pageContent[field.name]) {
-                    try {
-                        var contentMatchedElements = identifyElementsByContent(field.name, pageContent[field.name], field.contentType);
-                        if (wpfe_data.debug_mode && contentMatchedElements && contentMatchedElements.length) {
-                            console.log('Identified ' + contentMatchedElements.length + ' elements for ' + field.name + ' using content matching');
+                // For WPBakery
+                if ($('.wpb_row, .vc_row').length) {
+                    console.log('[WPFE] WPBakery detected - adding WPBakery-specific selectors');
+                    coreFields.push({
+                        name: 'wpbakery_content',
+                        selector: '.wpb_text_column, .wpb_content_element, .vc_column-inner',
+                        contentType: 'content',
+                        priority: 'medium'
+                    });
+                }
+                
+                // For Divi
+                if ($('.et_pb_section').length) {
+                    console.log('[WPFE] Divi detected - adding Divi-specific selectors');
+                    coreFields.push({
+                        name: 'divi_content',
+                        selector: '.et_pb_text_inner, .et_pb_text, .et_pb_module',
+                        contentType: 'content',
+                        priority: 'medium'
+                    });
+                }
+                
+                // Add fallback general selectors that might contain content
+                coreFields.push({
+                    name: 'generic_content',
+                    selector: 'section > div, article > div, .container > div > div, main > section, main > div',
+                    contentType: 'content',
+                    priority: 'low'
+                });
+            }
+            
+            // Log the selectors for debugging
+            console.log('[WPFE] Post title selectors:', coreFields[0].selector);
+            console.log('[WPFE] Post content selectors:', coreFields[1].selector);
+            console.log('[WPFE] Post excerpt selectors:', coreFields[2].selector);
+            
+            // Get page content from server if available
+            var pageContent = wpfe_data.page_content || {};
+            
+            // =====================================================================
+            // RUN ALL IDENTIFICATION STRATEGIES AND COMBINE RESULTS
+            // =====================================================================
+            console.log('[WPFE] Running all field identification strategies');
+            
+            // Run each strategy and collect results
+            var contentMatches = findElementsByContentMatching();
+            var selectorMatches = findElementsBySelectors();
+            var semanticMatches = findElementsBySemanticStructure();
+            
+            // Combine all matches
+            var allMatches = [].concat(contentMatches, selectorMatches, semanticMatches);
+            
+            console.log('[WPFE] Total potential matches found:', allMatches.length);
+            console.log('[WPFE] Content matches:', contentMatches.length);
+            console.log('[WPFE] Selector matches:', selectorMatches.length);
+            console.log('[WPFE] Semantic matches:', semanticMatches.length);
+            
+            // Group matches by element to merge duplicates and intelligently consolidate
+            var elementToMatchMap = {};
+            var elementMatchCounts = {}; // Track how many strategies found each element
+            
+            // First pass: Group by element and count matches
+            allMatches.forEach(function(match) {
+                try {
+                    var $element = match.element;
+                    if (!$element || !$element.length) return; // Skip invalid elements
+                    
+                    // Create a unique ID for this DOM element
+                    var elementId = $element.attr('id') || '';
+                    var elementClass = $element.attr('class') || '';
+                    var elementPath = $element.prop('tagName') + '#' + elementId + '.' + elementClass.replace(/\s+/g, '.');
+                    
+                    // Initialize tracking if first time seeing this element
+                    if (!elementToMatchMap[elementPath]) {
+                        elementToMatchMap[elementPath] = match;
+                        elementMatchCounts[elementPath] = { 
+                            count: 1,
+                            strategies: [match.strategy],
+                            fieldNames: [match.fieldName]
+                        };
+                    } else {
+                        // Track the strategy and field name to detect different strategies agreeing
+                        if (!elementMatchCounts[elementPath].strategies.includes(match.strategy)) {
+                            elementMatchCounts[elementPath].strategies.push(match.strategy);
                         }
-                    } catch (e) {
-                        console.error('Error while identifying elements by content for ' + field.name + ':', e);
+                        if (!elementMatchCounts[elementPath].fieldNames.includes(match.fieldName)) {
+                            elementMatchCounts[elementPath].fieldNames.push(match.fieldName);
+                        }
+                        elementMatchCounts[elementPath].count++;
+                        
+                        // Update if this match has higher confidence
+                        if (elementToMatchMap[elementPath].confidence < match.confidence) {
+                            elementToMatchMap[elementPath] = match;
+                        }
                     }
+                } catch (e) {
+                    console.error('[WPFE] Error processing match:', e);
                 }
             });
             
-            // Try to identify unlabeled elements that might be editable
+            // Second pass: Calculate confidence boost based on strategy agreement
+            Object.keys(elementToMatchMap).forEach(function(elementPath) {
+                var match = elementToMatchMap[elementPath];
+                var stats = elementMatchCounts[elementPath];
+                
+                // Base confidence from the best match
+                var newConfidence = match.confidence;
+                
+                // Significant boost if multiple strategies agree on the same element and field
+                if (stats.strategies.length > 1 && stats.fieldNames.length === 1) {
+                    // Strong agreement on both element and field type
+                    newConfidence += 0.15;
+                    console.log('[WPFE] Strong agreement boost for ' + match.fieldName + 
+                               ': multiple strategies (' + stats.strategies.join(', ') + ')');
+                } 
+                // Moderate boost if multiple matches from different strategies
+                else if (stats.strategies.length > 1) {
+                    // Different strategies found this element but disagree on field type
+                    newConfidence += 0.08;
+                    console.log('[WPFE] Moderate agreement boost: multiple strategies but different fields');
+                }
+                // Small boost for multiple matches of same strategy
+                else if (stats.count > 1) {
+                    newConfidence += 0.03;
+                }
+                
+                // Content matching carries more weight for boosting
+                if (stats.strategies.includes('content-match')) {
+                    newConfidence += 0.1;
+                    console.log('[WPFE] Content-match boost applied');
+                }
+                
+                // Semantic structure has good context awareness
+                if (stats.strategies.includes('semantic')) {
+                    newConfidence += 0.05;
+                }
+                
+                // Cap at 0.95 to avoid overconfidence
+                match.confidence = Math.min(0.95, newConfidence);
+                
+                // Track boosting in the match
+                match.boosted = (match.confidence !== newConfidence);
+                match.originalConfidence = match.confidence;
+            });
+            
+            // Convert map back to array and sort by confidence
+            var bestMatches = Object.values(elementToMatchMap).sort(function(a, b) {
+                return b.confidence - a.confidence;
+            });
+            
+            console.log('[WPFE] Consolidated matches:', bestMatches.length);
+            
+            // Handle special case for debug mode
+            if (wpfe_data.debug_mode && bestMatches.length === 0) {
+                console.log('[WPFE] No matches found with intelligent strategies, falling back to legacy approach');
+                
+                // Fall back to legacy selector approach for debug mode
+                $.each(coreFields, function(index, field) {
+                    var elements = $(field.selector);
+                    console.log('[WPFE] Legacy approach: searching for ' + field.name + ' elements');
+                    console.log('[WPFE] Found ' + elements.length + ' potential elements for ' + field.name);
+                    
+                    elements.each(function() {
+                        bestMatches.push({
+                            element: $(this),
+                            fieldName: field.name,
+                            confidence: 0.5,
+                            strategy: 'legacy-selector',
+                            found: true
+                        });
+                    });
+                });
+            }
+            
+            // Mark matched elements as editable and add buttons
+            bestMatches.forEach(function(match) {
+                if (match.confidence >= confidenceThreshold) {
+                    var $element = match.element;
+                    var fieldName = match.fieldName;
+                    var confidence = match.confidence;
+                    var strategy = match.strategy;
+                    
+                    console.log('[WPFE] Processing high-confidence match:', 
+                               'Field:', fieldName,
+                               'Confidence:', confidence.toFixed(2),
+                               'Strategy:', strategy,
+                               'Element:', $element.prop('tagName'),
+                               'Class:', $element.attr('class') || 'none');
+                    
+                    // Skip if element is too small or empty
+                    if ($element.text().trim().length < 3) {
+                        console.log('[WPFE] Skipping - element content too small');
+                        return;
+                    }
+                    
+                    // Make sure element has relative positioning for button placement
+                    if ($element.css('position') === 'static') {
+                        $element.css('position', 'relative');
+                    }
+                    
+                    // Don't duplicate if already marked as editable
+                    if (!$element.hasClass('wpfe-editable')) {
+                        $element.addClass('wpfe-editable')
+                            .attr('data-wpfe-field', fieldName)
+                            .attr('data-wpfe-post-id', postId)
+                            .attr('data-wpfe-identified-by', strategy)
+                            .attr('data-wpfe-confidence', confidence.toFixed(2));
+                        
+                        // Add edit button with appropriate field name
+                        addEditButton($element, fieldName, postId);
+                        
+                        // In debug mode, style based on confidence
+                        if (wpfe_data.debug_mode) {
+                            var confidenceColor = confidence > 0.8 ? 'green' : 
+                                                 (confidence > 0.6 ? 'orange' : 'red');
+                            $element.css('outline-color', confidenceColor);
+                        }
+                    } else {
+                        // Update existing editable element if needed
+                        if (!$element.attr('data-wpfe-has-button') || $element.find('.wpfe-edit-button').length === 0) {
+                            addEditButton($element, fieldName, postId);
+                        }
+                    }
+                } else {
+                    console.log('[WPFE] Skipping low-confidence match:', 
+                               match.fieldName, 
+                               'Confidence:', match.confidence.toFixed(2));
+                }
+            });
+            
+            // Try to identify unlabeled elements as a fallback
             identifyPotentialEditableElements();
+            
+            // Setup progressive element discovery for slow-loading sites
+            var discoveryAttempts = 0;
+            var maxDiscoveryAttempts = 5;
+            var initialDelay = 1000;
+            
+            // Progressive discovery function with retry logic
+            // Start the first discovery attempt
+            setTimeout(runProgressiveDiscovery, initialDelay);
+            function runProgressiveDiscovery() {
+                discoveryAttempts++;
+                var editableElements = $('.wpfe-editable');
+                var editButtons = $('.wpfe-edit-button');
+                
+                console.log('[WPFE] ==========================================');
+                console.log('[WPFE] ELEMENT DISCOVERY CHECK - ATTEMPT ' + discoveryAttempts + '/' + maxDiscoveryAttempts);
+                console.log('[WPFE] ==========================================');
+                console.log('[WPFE] Total editable elements found:', editableElements.length);
+                console.log('[WPFE] Total edit buttons created:', editButtons.length);
+                console.log('[WPFE] Visible edit buttons:', $('.wpfe-edit-button:visible').length);
+                
+                // If no elements found or we're early in the discovery process
+                if (editableElements.length === 0) {
+                    console.warn('[WPFE] No editable elements found in attempt ' + discoveryAttempts + '!');
+                    
+                    // Try advanced discovery techniques based on attempt
+                    if (discoveryAttempts >= 2) {
+                        // On the second attempt, try content-based identification again with lower threshold
+                        console.log('[WPFE] Trying content matching with lower threshold...');
+                        
+                        // Try re-running content matching with lower threshold
+                        if (pageContent && Object.keys(pageContent).length > 0) {
+                            Object.keys(pageContent).forEach(function(fieldName) {
+                                var fieldValue = pageContent[fieldName];
+                                
+                                if (typeof fieldValue === 'string' && fieldValue.trim().length > 0) {
+                                    // Only scan for significant content
+                                    if (fieldValue.length > 30) {
+                                        console.log('[WPFE] Re-scanning for field content:', fieldName);
+                                        
+                                        // Find ANY elements that might contain this text
+                                        $('*').each(function() {
+                                            var $element = $(this);
+                                            
+                                            // Skip tiny elements and those already marked
+                                            if ($element.text().trim().length < 30 || $element.hasClass('wpfe-editable')) {
+                                                return;
+                                            }
+                                            
+                                            // Check content similarity with lower threshold
+                                            var similarity = calculateContentSimilarity($element.text(), fieldValue);
+                                            if (similarity > 0.3) { // Lower threshold than normal
+                                                console.log('[WPFE] Lower threshold match:', similarity.toFixed(2), 
+                                                          'Element:', $element.prop('tagName'), 
+                                                          'Field:', fieldName);
+                                                
+                                                $element.addClass('wpfe-editable')
+                                                    .attr('data-wpfe-field', fieldName)
+                                                    .attr('data-wpfe-post-id', postId)
+                                                    .attr('data-wpfe-identified-by', 'recovery-content')
+                                                    .attr('data-wpfe-confidence', similarity.toFixed(2));
+                                                
+                                                addEditButton($element, fieldName, postId);
+                                            }
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    
+                    // On the third attempt, try extra structural hints
+                    if (discoveryAttempts >= 3) {
+                        console.log('[WPFE] Trying to identify main content containers...');
+                        
+                        // Look for common structural patterns
+                        $('article, .single, .post, main > *, #content > *, .main > *').each(function() {
+                            var $element = $(this);
+                            
+                            // Skip tiny elements and those already marked
+                            if ($element.text().trim().length < 50 || $element.hasClass('wpfe-editable')) {
+                                return;
+                            }
+                            
+                            $element.addClass('wpfe-editable')
+                                .attr('data-wpfe-field', 'recovery_content')
+                                .attr('data-wpfe-post-id', postId)
+                                .attr('data-wpfe-identified-by', 'recovery-structure')
+                                .attr('data-wpfe-confidence', '0.4');
+                            
+                            addEditButton($element, 'recovery_content', postId);
+                        });
+                    }
+                    
+                    // Last-ditch emergency identification on final attempt
+                    if (discoveryAttempts >= maxDiscoveryAttempts - 1) {
+                        console.log('[WPFE] Final attempt: Running emergency identification on ANY content...');
+                        
+                        // Try to make ANY significant content editable
+                        $('h1, h2, p, div:not(:has(div))').each(function() {
+                            var $element = $(this);
+                            var text = $element.text().trim();
+                            
+                            // Only consider non-empty elements with reasonable text length
+                            if (text.length > 20 && text.length < 5000 && !$element.hasClass('wpfe-editable')) {
+                                $element.addClass('wpfe-editable')
+                                    .attr('data-wpfe-field', 'emergency_content')
+                                    .attr('data-wpfe-post-id', postId)
+                                    .attr('data-wpfe-identified-by', 'emergency');
+                                
+                                addEditButton($element, 'emergency_content', postId);
+                                
+                                // Style very prominently
+                                $element.css({
+                                    'outline': '5px solid red',
+                                    'background-color': 'rgba(255, 0, 0, 0.1)'
+                                });
+                            }
+                        });
+                    }
+                    
+                    // Schedule next attempt if we haven't hit the max
+                    if (discoveryAttempts < maxDiscoveryAttempts) {
+                        // Use progressive delay (1s, 2s, 3s, 5s)
+                        var nextDelay = initialDelay * Math.min(discoveryAttempts * 1.5, 5);
+                        console.log('[WPFE] Scheduling next discovery attempt in ' + (nextDelay/1000) + ' seconds...');
+                        
+                        setTimeout(runProgressiveDiscovery, nextDelay);
+                        return; // Exit early, we'll continue in the next scheduled call
+                    }
+                }
+                
+                // Make all buttons highly visible in debug mode
+                if (wpfe_data.debug_mode) {
+                    $('.wpfe-edit-button').css({
+                        'opacity': '1',
+                        'visibility': 'visible',
+                        'transform': 'scale(1)',
+                        'background-color': 'red',
+                        'z-index': '9999999'
+                    });
+                }
+                
+                // Add global helper for manual button addition
+                window.wpfeAddButtonTo = function(selector) {
+                    var $element = $(selector);
+                    if ($element.length) {
+                        console.log('[WPFE] Manually adding button to:', selector);
+                        
+                        $element.addClass('wpfe-editable')
+                            .attr('data-wpfe-field', 'manual_content')
+                            .attr('data-wpfe-post-id', postId)
+                            .attr('data-wpfe-identified-by', 'manual');
+                        
+                        addEditButton($element, 'manual_content', postId);
+                        
+                        $element.css({
+                            'outline': '5px solid blue',
+                            'background-color': 'rgba(0, 0, 255, 0.1)'
+                        });
+                        
+                        return 'Button added to ' + selector;
+                    } else {
+                        return 'Element not found: ' + selector;
+                    }
+                };
+            }, 2000);
             
             // Handle existing editable elements that might not have buttons
             $('.wpfe-editable').each(function() {
@@ -476,6 +1433,63 @@ WPFE.elements = (function($) {
                     }
                 }
             });
+            
+            // In debug mode, add an emergency manual placement function to the global scope
+            if (wpfe_data.debug_mode) {
+                console.log('[WPFE] Adding emergency manual button function to window.wpfeAddButtonTo');
+                
+                window.wpfeAddButtonTo = function(selector) {
+                    var $element = $(selector);
+                    if ($element.length) {
+                        console.log('[WPFE] Manually adding button to element:', selector);
+                        
+                        // Make sure it's marked as editable
+                        $element.addClass('wpfe-editable')
+                            .attr('data-wpfe-field', 'manual_content')
+                            .attr('data-wpfe-post-id', wpfe_data.post_id)
+                            .attr('data-wpfe-identified-by', 'manual');
+                        
+                        // Create edit button
+                        addEditButton($element, 'manual_content', wpfe_data.post_id);
+                        
+                        // Style it prominently
+                        $element.css({
+                            'outline': '5px solid red',
+                            'background-color': 'rgba(255, 0, 0, 0.2)'
+                        });
+                        
+                        return 'Button added to ' + selector;
+                    } else {
+                        console.error('[WPFE] Element not found:', selector);
+                        return 'Element not found: ' + selector;
+                    }
+                };
+                
+                // Immediately try to add buttons to common elements after a short delay
+                setTimeout(function() {
+                    console.log('[WPFE] Emergency auto-discovery of common elements');
+                    
+                    var commonElements = [
+                        'h1:first',
+                        'article:first',
+                        'main:first',
+                        '.content:first',
+                        '.entry-content:first',
+                        '.post:first',
+                        '.site-content:first p:first',
+                        '.post-content:first',
+                        'main p:first',
+                        '.container p:first'
+                    ];
+                    
+                    for (var i = 0; i < commonElements.length; i++) {
+                        var $element = $(commonElements[i]);
+                        if ($element.length && !$element.hasClass('wpfe-editable')) {
+                            window.wpfeAddButtonTo(commonElements[i]);
+                        }
+                    }
+                }, 2000);
+            }
             
             // Cache all edit buttons after initialization
             WPFE.core.setEditButtons($('.wpfe-edit-button'));
