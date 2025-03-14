@@ -227,7 +227,15 @@ class WP_Frontend_Editor {
         $modules = array(
             'utils',      // Utility functions used by all modules
             'core',       // Core functionality
-            'elements',   // Elements module for field identification
+            
+            // Elements module and its sub-modules
+            'element-core',       // Core element functionality
+            'element-utils',      // Element utility functions
+            'element-buttons',    // Button handling
+            'element-detection',  // Field discovery
+            'element-acf',        // ACF field detection
+            'elements',           // Main elements module (loads after sub-modules)
+            
             'events',     // Event handling
             'ajax',       // AJAX communication
             'fields',     // Field rendering
@@ -241,10 +249,26 @@ class WP_Frontend_Editor {
         $previous_modules = array('wp-frontend-editor');
         
         foreach ( $modules as $module ) {
-            // Dependencies always include main script and any previous modules
+            // Handle special dependencies for elements-related modules
             $dependencies = $previous_modules;
             
-            // Special case for main.js - it depends on all other modules
+            // Special case 1: element sub-modules depend on utils and core
+            if (strpos($module, 'element-') === 0) {
+                $dependencies = array('wp-frontend-editor', 'wp-frontend-editor-utils', 'wp-frontend-editor-core');
+            }
+            
+            // Special case 2: main elements.js depends on all element sub-modules
+            if ($module === 'elements') {
+                $dependencies = array('wp-frontend-editor', 'wp-frontend-editor-utils', 'wp-frontend-editor-core');
+                // Add all element sub-modules as dependencies
+                foreach ($modules as $dep_module) {
+                    if (strpos($dep_module, 'element-') === 0) {
+                        $dependencies[] = 'wp-frontend-editor-' . $dep_module;
+                    }
+                }
+            }
+            
+            // Special case 3: main.js - it depends on all other modules
             if ($module === 'main') {
                 $dependencies = array();
                 foreach ($modules as $dep_module) {
@@ -276,6 +300,17 @@ class WP_Frontend_Editor {
             WPFE_VERSION,
             true
         );
+        
+        // Enqueue test script for element modules
+        if (isset($this->options['debug_mode']) && $this->options['debug_mode']) {
+            wp_enqueue_script(
+                'wp-frontend-editor-test-elements',
+                WPFE_PLUGIN_URL . 'public/js/test-element-modules.js',
+                array( 'wp-frontend-editor', 'wp-frontend-editor-main', 'jquery' ),
+                WPFE_VERSION,
+                true
+            );
+        }
         
         // Enqueue our native fields CSS
         wp_enqueue_style(

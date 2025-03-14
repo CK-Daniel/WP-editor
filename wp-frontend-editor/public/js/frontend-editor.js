@@ -63,7 +63,15 @@ if (typeof window.wpfe_data === 'undefined') {
 WPFE.modulesReady = {
     core: false,
     utils: false,
+    
+    // Element modules
+    'element-core': false,
+    'element-utils': false,
+    'element-buttons': false,
+    'element-detection': false,
+    'element-acf': false,
     elements: false,
+    
     events: false,
     ajax: false,
     fields: false,
