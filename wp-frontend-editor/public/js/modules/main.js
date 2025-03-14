@@ -35,7 +35,15 @@ jQuery(document).ready(function($) {
             console.error('[WPFE] wp-util is not loaded!');
         }
         
-        return;
+        console.warn('[WPFE] Using emergency fallback wpfe_data created in frontend-editor.js');
+        
+        // Check if emergency fallback was created
+        if (wpfe_data && wpfe_data.emergency_fallback) {
+            console.log('[WPFE] Emergency fallback wpfe_data is available. Continuing with limited functionality.');
+        } else {
+            console.error('[WPFE] Emergency fallback wpfe_data was not created properly. Editor may not function.');
+            return;
+        }
     }
     
     // Enhanced module loading check with retry mechanism

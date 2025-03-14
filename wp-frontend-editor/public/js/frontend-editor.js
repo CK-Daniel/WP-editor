@@ -6,6 +6,32 @@
 // Create the WPFE namespace for module sharing
 var WPFE = WPFE || {};
 
+// Create fallback wpfe_data if not properly localized by WordPress
+if (typeof window.wpfe_data === 'undefined') {
+    console.error('[WPFE] CRITICAL ERROR: wpfe_data is not defined! Creating emergency fallback.');
+    window.wpfe_data = {
+        ajax_url: '/wp-admin/admin-ajax.php',
+        nonce: '',
+        post_id: document.querySelector('body').className.match(/postid-(\d+)/) ? 
+                document.querySelector('body').className.match(/postid-(\d+)/)[1] : 0,
+        plugin_url: '',
+        debug_mode: true,
+        button_position: 'top-right',
+        button_style: 'icon-only',
+        highlight_editable: true,
+        discover_fields: true,
+        page_content: {},
+        is_acf_active: false,
+        emergency_fallback: true,
+        i18n: {
+            edit: 'Edit',
+            save: 'Save',
+            cancel: 'Cancel',
+            error: 'Error'
+        }
+    };
+}
+
 // Add initialization markers
 WPFE.modulesReady = {
     core: false,
@@ -66,8 +92,18 @@ WPFE.debug = {
             post_id: wpfe_data.post_id,
             debug_mode: wpfe_data.debug_mode,
             highlight_editable: wpfe_data.highlight_editable,
-            is_acf_active: wpfe_data.is_acf_active
+            is_acf_active: wpfe_data.is_acf_active,
+            emergency_fallback: wpfe_data.emergency_fallback || false
         });
+        
+        // Check if using emergency fallback data
+        if (wpfe_data.emergency_fallback) {
+            console.warn('[WPFE] Using emergency fallback data. The editor may have limited functionality.');
+            console.warn('[WPFE] This could be caused by:');
+            console.warn('  1. The wp_localize_script function failed in PHP');
+            console.warn('  2. The script was not properly enqueued');
+            console.warn('  3. A JavaScript error prevented proper initialization');
+        }
         
         return true;
     }
