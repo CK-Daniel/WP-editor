@@ -223,34 +223,56 @@ class WP_Frontend_Editor {
         );
         
         // Enqueue modular JavaScript files in the correct order
+        // CRITICAL: Order matters! Dependencies must come first
         $modules = array(
-            'utils',
-            'core',
-            'elements',
-            'events',
-            'ajax',
-            'fields',
-            'ui',
-            'mobile',
-            'acf',
-            'main'
+            'utils',      // Utility functions used by all modules
+            'core',       // Core functionality
+            'elements',   // Elements module for field identification
+            'events',     // Event handling
+            'ajax',       // AJAX communication
+            'fields',     // Field rendering
+            'ui',         // UI components
+            'mobile',     // Mobile-specific features
+            'acf',        // ACF integration (if active)
+            'main'        // Main initialization (must be last)
         );
         
+        // Create proper dependency chain for modules
+        $previous_modules = array('wp-frontend-editor');
+        
         foreach ( $modules as $module ) {
+            // Dependencies always include main script and any previous modules
+            $dependencies = $previous_modules;
+            
+            // Special case for main.js - it depends on all other modules
+            if ($module === 'main') {
+                $dependencies = array();
+                foreach ($modules as $dep_module) {
+                    if ($dep_module !== 'main') {
+                        $dependencies[] = 'wp-frontend-editor-' . $dep_module;
+                    }
+                }
+                $dependencies[] = 'wp-frontend-editor';
+            }
+            
             wp_enqueue_script(
                 'wp-frontend-editor-' . $module,
                 WPFE_PLUGIN_URL . 'public/js/modules/' . $module . '.js',
-                array( 'wp-frontend-editor' ),
+                $dependencies,
                 WPFE_VERSION,
                 true
             );
+            
+            // Add this module to the dependencies for the next one
+            $previous_modules[] = 'wp-frontend-editor-' . $module;
         }
         
-        // Enqueue our native fields JavaScript
+        // Enqueue our native fields JavaScript with proper dependencies
+        // Must depend on main.js to ensure it loads last
         wp_enqueue_script(
             'wp-frontend-editor-native-fields',
             WPFE_PLUGIN_URL . 'public/js/native-fields.js',
-            array( 'wp-frontend-editor', 'jquery', 'wp-util' ),
+            array( 'wp-frontend-editor', 'wp-frontend-editor-main', 'jquery', 'wp-util' ),
             WPFE_VERSION,
             true
         );

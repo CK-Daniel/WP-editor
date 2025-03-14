@@ -5,8 +5,11 @@
 
 var WPFE = WPFE || {};
 
-// Initialize the editor when document is ready
+// IMPORTANT: This script must be loaded LAST in the dependency chain
+// Initialize the editor when document is ready AND all other modules have loaded
 jQuery(document).ready(function($) {
+    // Verify all modules have loaded
+    console.log('[WPFE] Main module starting - verifying all modules are loaded...');
     'use strict';
     
     // Mark this module as loaded
