@@ -129,6 +129,39 @@ class WP_Frontend_Editor_AJAX {
         // Get field data using fields handler
         $result = $this->fields_handler->get_field_data($post_id, $field_names);
         
+        // Ensure we have data for the requested field to prevent loading issues
+        if (empty($result) || !is_array($result)) {
+            wp_send_json_error(array(
+                'message' => __('No field data was returned by the server', 'wp-frontend-editor'),
+                'debug_info' => array(
+                    'post_id' => $post_id,
+                    'field_names' => $field_names,
+                    'user_id' => get_current_user_id(),
+                    'result' => $result
+                )
+            ));
+        }
+        
+        // Extra validation for field data
+        $valid_result = false;
+        foreach ($result as $field_key => $field_data) {
+            if (!empty($field_data) && is_array($field_data) && isset($field_data['type'])) {
+                $valid_result = true;
+                break;
+            }
+        }
+        
+        if (!$valid_result) {
+            wp_send_json_error(array(
+                'message' => __('Invalid field data structure returned', 'wp-frontend-editor'),
+                'debug_info' => array(
+                    'post_id' => $post_id,
+                    'field_names' => $field_names,
+                    'result_keys' => array_keys($result)
+                )
+            ));
+        }
+        
         wp_send_json_success($result);
     }
 

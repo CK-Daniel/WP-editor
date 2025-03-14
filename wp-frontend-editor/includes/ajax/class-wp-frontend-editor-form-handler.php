@@ -358,8 +358,79 @@ class WP_Frontend_Editor_Form_Handler {
                             'post_id' => $post_id,
                             'field_name' => $field_name
                         ));
+                    } else if ( $field_name === 'post_thumbnail' || $field_name === 'featured_image' ) {
+                        // Update featured image
+                        if ( empty( $sanitized_value ) ) {
+                            delete_post_thumbnail( $post_id );
+                        } else {
+                            set_post_thumbnail( $post_id, absint($sanitized_value) );
+                        }
+                        
+                        // Log featured image update
+                        wpfe_log( 'Featured image updated', 'debug', array(
+                            'post_id' => $post_id,
+                            'attachment_id' => $sanitized_value
+                        ));
+                    } else if ( $field_name === 'post_categories' ) {
+                        // Update post categories
+                        $cat_ids = !is_array($sanitized_value) ? array($sanitized_value) : $sanitized_value;
+                        wp_set_post_categories( $post_id, array_map('intval', $cat_ids) );
+                        
+                        // Log categories update
+                        wpfe_log( 'Post categories updated', 'debug', array(
+                            'post_id' => $post_id,
+                            'categories' => $cat_ids
+                        ));
+                    } else if ( $field_name === 'post_tags' ) {
+                        // Update post tags - expects comma-separated string
+                        if (is_string($sanitized_value)) {
+                            wp_set_post_tags( $post_id, $sanitized_value, false ); // false = replace all tags
+                        } else if (is_array($sanitized_value)) {
+                            // Convert array to comma-separated string
+                            wp_set_post_tags( $post_id, implode(',', $sanitized_value), false );
+                        }
+                        
+                        // Log tags update
+                        wpfe_log( 'Post tags updated', 'debug', array(
+                            'post_id' => $post_id, 
+                            'tags' => $sanitized_value
+                        ));
+                    } else if ( strpos($field_name, 'tax_') === 0 ) {
+                        // Handle custom taxonomy updates
+                        $taxonomy = substr($field_name, 4);
+                        
+                        // Check if taxonomy exists
+                        if (taxonomy_exists($taxonomy)) {
+                            // For hierarchical taxonomies, we get an array of term IDs
+                            if (is_array($sanitized_value)) {
+                                $term_ids = array_map('intval', $sanitized_value);
+                                wp_set_object_terms($post_id, $term_ids, $taxonomy, false);
+                            } 
+                            // For non-hierarchical, we get a comma-separated string of terms
+                            else if (is_string($sanitized_value)) {
+                                wp_set_object_terms($post_id, explode(',', $sanitized_value), $taxonomy, false);
+                            }
+                            
+                            // Log taxonomy update
+                            wpfe_log( 'Custom taxonomy updated', 'debug', array(
+                                'post_id' => $post_id,
+                                'taxonomy' => $taxonomy,
+                                'terms' => $sanitized_value
+                            ));
+                        }
+                    } else if ( strpos($field_name, 'meta_') === 0 ) {
+                        // Handle meta field updates with meta_ prefix
+                        $meta_key = substr($field_name, 5);
+                        update_post_meta($post_id, $meta_key, $sanitized_value);
+                        
+                        // Log meta field update
+                        wpfe_log( 'Post meta field updated', 'debug', array(
+                            'post_id' => $post_id,
+                            'field_name' => $meta_key,
+                            'prefixed' => true
+                        ));
                     } else {
-                        // Update custom field
+                        // Update custom field (post meta) as a fallback
                         update_post_meta( $post_id, $field_name, $sanitized_value );
                         
                         // Log custom field update

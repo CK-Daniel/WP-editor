@@ -215,10 +215,33 @@ WPFE.ajax = (function($) {
          * @param {Function} callback The callback function
          */
         fetchField: function(fieldName, postId, callback) {
+            // Add timeout handling to prevent indefinite loading state
+            var requestTimeout = setTimeout(function() {
+                // If the request takes longer than 15 seconds, force error response
+                var timeoutResponse = {
+                    success: false,
+                    data: {
+                        message: 'The request timed out. The server might be slow or unable to process your request.'
+                    }
+                };
+                if (typeof callback === 'function') {
+                    callback(timeoutResponse);
+                }
+                console.error('WPFE: Field fetch request timed out for ' + fieldName);
+            }, 15000); // 15 second timeout
+            
+            // Create a wrapper callback to clear the timeout
+            var wrappedCallback = function(response) {
+                clearTimeout(requestTimeout);
+                if (typeof callback === 'function') {
+                    callback(response);
+                }
+            };
+            
             queueRequest('wpfe_get_fields', {
                 field_names: fieldName,
                 post_id: postId
-            }, callback, true);
+            }, wrappedCallback, true);
         },
         
         /**

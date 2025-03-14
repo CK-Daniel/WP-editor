@@ -66,6 +66,12 @@ class WP_Frontend_Editor_Fields_Handler {
         } elseif ( is_string( $fields ) ) {
             $fields = explode( ',', $fields );
         }
+        
+        // Log the field request for debugging purposes
+        wpfe_log( 'Field data requested', 'debug', array(
+            'post_id' => $post_id,
+            'fields' => $fields
+        ));
 
         // Get core fields
         foreach ( $fields as $field ) {
@@ -183,11 +189,23 @@ class WP_Frontend_Editor_Fields_Handler {
                     break;
 
                 default:
-                    // Check if it's an ACF field
+                    // Try to handle the field in multiple ways for robustness
+                    $field_handled = false;
+                    
+                    // Check if it's an ACF field first
                     if ( class_exists( 'ACF' ) && function_exists( 'get_field' ) && function_exists( 'acf_get_field' ) ) {
+                        $data_before = $data;
                         $data = $this->get_acf_field_data($data, $field, $post_id);
-                    } elseif ( strpos( $field, 'meta_' ) === 0 ) {
-                        // Handle post meta fields
+                        
+                        // Check if ACF handler actually found and processed the field
+                        if ($data !== $data_before) {
+                            $field_handled = true;
+                            wpfe_log('Field handled by ACF processor', 'debug', array('field' => $field));
+                        }
+                    }
+                    
+                    // Check for meta fields with meta_ prefix
+                    if (!$field_handled && strpos( $field, 'meta_' ) === 0 ) {
                         $meta_key = substr( $field, 5 );
                         $meta_value = get_post_meta( $post_id, $meta_key, true );
                         
@@ -197,7 +215,45 @@ class WP_Frontend_Editor_Fields_Handler {
                             'label' => $this->format_meta_key_label( $meta_key ),
                             'source' => 'wordpress',
                         );
+                        
+                        $field_handled = true;
+                        wpfe_log('Field handled as meta field', 'debug', array('field' => $field, 'meta_key' => $meta_key));
                     }
+                    
+                    // Last resort - try to get it directly as post meta
+                    if (!$field_handled) {
+                        // Try as direct post meta
+                        $meta_value = get_post_meta( $post_id, $field, true );
+                        
+                        if (!empty($meta_value) || is_numeric($meta_value)) {
+                            $data[$field] = array(
+                                'value' => $meta_value,
+                                'type'  => is_array( $meta_value ) ? 'array' : 'text',
+                                'label' => $this->format_meta_key_label( $field ),
+                                'source' => 'wordpress',
+                                'meta_key' => $field
+                            );
+                            
+                            $field_handled = true;
+                            wpfe_log('Field handled as direct meta key', 'debug', array('field' => $field));
+                        }
+                    }
+                    
+                    // Final fallback - create a text field as placeholder
+                    if (!$field_handled) {
+                        // Add a placeholder field so the UI doesn't break
+                        $data[$field] = array(
+                            'value' => '',
+                            'type'  => 'text',
+                            'label' => $this->format_meta_key_label( $field ),
+                            'source' => 'wordpress',
+                            'placeholder' => true,
+                            'description' => __('This field was not found in the database. It will be created when you save.', 'wp-frontend-editor')
+                        );
+                        
+                        wpfe_log('Field not found, created placeholder', 'warning', array('field' => $field));
+                    }
+                    
                     break;
             }
         }

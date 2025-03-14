@@ -279,9 +279,22 @@
     font-family: var(--wpfe-font-family) !important;
 }
 
+/* Force visibility when active to override any theme styles */
 .wpfe-editor-sidebar.is-active,
 .wpfe-editor-sidebar.wpfe-sidebar-active {
     transform: translateX(0) !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: flex !important;
+    right: 0 !important;
+}
+
+/* Enhanced styles to better handle troublesome themes */
+.wpfe-editor-sidebar[style*="display: flex"] {
+    transform: none !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    right: 0 !important;
 }
 
 .wpfe-editor-sidebar.position-left {
@@ -348,6 +361,91 @@
 body.admin-bar .wpfe-editor-sidebar {
     top: 32px !important;
     height: calc(100% - 32px) !important;
+}
+
+/* Enhanced Loading Indicator */
+.wpfe-loading {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 30px !important;
+    text-align: center !important;
+    color: var(--wpfe-gray-700) !important;
+    font-size: 16px !important;
+    width: 100% !important;
+    min-height: 200px !important;
+}
+
+.wpfe-loading .dashicons {
+    font-size: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    margin-bottom: 15px !important;
+    animation: wpfe-spin 1.5s linear infinite !important;
+    color: var(--wpfe-primary) !important;
+}
+
+.wpfe-loading-details {
+    margin-top: 10px !important;
+    font-size: 13px !important;
+    color: var(--wpfe-gray-500) !important;
+}
+
+@keyframes wpfe-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Enhanced Error Message */
+.wpfe-error {
+    padding: 20px !important;
+    margin: 15px !important;
+    background-color: var(--wpfe-error-light) !important;
+    border-left: 4px solid var(--wpfe-error) !important;
+    border-radius: 4px !important;
+    color: var(--wpfe-gray-800) !important;
+}
+
+.wpfe-error p {
+    margin-bottom: 15px !important;
+    font-size: 14px !important;
+}
+
+.wpfe-error-details {
+    font-size: 12px !important;
+    color: var(--wpfe-gray-600) !important;
+    margin-bottom: 15px !important;
+}
+
+.wpfe-error .wpfe-close-button {
+    background-color: var(--wpfe-white) !important;
+    border: 1px solid var(--wpfe-gray-300) !important;
+    color: var(--wpfe-gray-700) !important;
+    padding: 5px 15px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 13px !important;
+}
+
+/* Field warning styles */
+.wpfe-field-warning {
+    display: inline-block !important;
+    background-color: var(--wpfe-warning-light) !important;
+    color: var(--wpfe-gray-700) !important;
+    font-size: 12px !important;
+    padding: 3px 6px !important;
+    border-radius: 3px !important;
+    margin-top: 5px !important;
+    border-left: 3px solid var(--wpfe-warning) !important;
+}
+
+/* Placeholder field styling */
+.wpfe-placeholder-field {
+    border-left: 4px solid var(--wpfe-info) !important;
+    background-color: var(--wpfe-info-light) !important;
+    padding-left: 10px !important;
+    border-radius: 3px !important;
 }
 
 @media screen and (max-width: 782px) {

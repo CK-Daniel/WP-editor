@@ -128,16 +128,24 @@ WPFE.events = (function($) {
             
             // Show the sidebar with animation and fallback
             try {
-                // Make sure to clear any transform and display properly
+                // Force reset of all critical CSS properties to ensure visibility
                 sidebar.addClass('wpfe-sidebar-active')
                       .addClass('is-active')
                       .css({
                           'display': 'flex',
-                          'transform': 'none',
+                          'transform': 'translateX(0) !important',
                           'opacity': '1',
-                          'visibility': 'visible'
+                          'visibility': 'visible',
+                          'right': '0',
+                          'position': 'fixed',
+                          'z-index': '999999'
                       })
                       .show();
+                
+                // More aggressive transform reset with timeout
+                setTimeout(function() {
+                    sidebar.css('transform', 'none !important');
+                }, 10);
                 
                 // Debug sidebar visibility
                 console.log('Sidebar visibility state:', {
@@ -147,11 +155,15 @@ WPFE.events = (function($) {
                     'height': sidebar.css('height'),
                     'right': sidebar.css('right'),
                     'transform': sidebar.css('transform'),
-                    'z-index': sidebar.css('z-index')
+                    'z-index': sidebar.css('z-index'),
+                    'classes': sidebar.attr('class')
                 });
             } catch (e) {
-                sidebar.addClass('wpfe-sidebar-active').addClass('is-active').show();
-                console.warn('Sidebar animation failed, using direct show() method');
+                // If animation approach fails, use direct CSS manipulation
+                sidebar.addClass('wpfe-sidebar-active').addClass('is-active')
+                       .attr('style', 'display: flex !important; transform: none !important; right: 0 !important; opacity: 1 !important; visibility: visible !important; position: fixed !important; z-index: 999999 !important;')
+                       .show();
+                console.warn('Sidebar animation failed, using direct style attribute method');
             }
             
             // Set sidebar title with safe text handling
@@ -166,26 +178,35 @@ WPFE.events = (function($) {
                 (wpfe_data.i18n.loading || 'Loading...') + '</div>'
             );
             
-            // Fetch field data with error handling
+            // Fetch field data with enhanced error handling
+            sidebar.find('.wpfe-sidebar-content').html(
+                '<div class="wpfe-loading"><span class="dashicons dashicons-update-alt"></span> ' + 
+                (wpfe_data.i18n.loading || 'Loading...') + 
+                '<div class="wpfe-loading-details">Fetching field data...</div></div>'
+            );
+            
             WPFE.ajax.fetchField(fieldName, postId, function(response) {
                 try {
                     // Handle unsuccessful response
-                    if (!response.success) {
-                        var errorMessage = response.data && response.data.message ? 
+                    if (!response || !response.success) {
+                        var errorMessage = response && response.data && response.data.message ? 
                             response.data.message : 'Unknown error loading field';
                         
                         sidebar.find('.wpfe-sidebar-content').html(
                             '<div class="wpfe-error"><p>' + errorMessage + '</p>' +
+                            '<p class="wpfe-error-details">Please try again or contact the site administrator if this problem persists.</p>' +
                             '<button type="button" class="wpfe-close-button button">' + 
                             (wpfe_data.i18n.close || 'Close') + '</button></div>'
                         );
-                        console.error('Error loading field:', errorMessage);
+                        console.error('Error loading field:', errorMessage, response);
                         return;
                     }
                     
                     // Store original values for tracking changes
                     if (response.data) {
                         WPFE.core.setOriginalValue(fieldName, response.data.value);
+                    } else {
+                        console.warn('No data in successful response for field:', fieldName);
                     }
                     
                     // Render field in the sidebar
@@ -210,7 +231,9 @@ WPFE.events = (function($) {
                 } catch (err) {
                     console.error('Error processing field data:', err);
                     sidebar.find('.wpfe-sidebar-content').html(
-                        '<div class="wpfe-error"><p>Error rendering field editor</p>' +
+                        '<div class="wpfe-error">' +
+                        '<p>Error rendering field editor</p>' +
+                        '<p class="wpfe-error-details">Technical details: ' + err.message + '</p>' +
                         '<button type="button" class="wpfe-close-button button">' + 
                         (wpfe_data.i18n.close || 'Close') + '</button></div>'
                     );

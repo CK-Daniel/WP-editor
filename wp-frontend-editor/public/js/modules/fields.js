@@ -563,18 +563,45 @@ WPFE.fields = (function($) {
             var sidebar = WPFE.core.getSidebar();
             var sidebarContent = sidebar.find('.wpfe-sidebar-content');
             
-            // Handle error responses
-            if (!response.success) {
+            // Handle error responses with better user feedback
+            if (!response || !response.success) {
+                var errorMessage = response && response.data && response.data.message ? 
+                    response.data.message : (wpfe_data.i18n.error_loading_field || 'Error loading field.');
+                    
                 sidebarContent.html(
-                    '<div class="wpfe-error-message">' +
-                    '<p>' + (response.message || wpfe_data.i18n.error_loading_field || 'Error loading field.') + '</p>' +
+                    '<div class="wpfe-error">' +
+                    '<p>' + errorMessage + '</p>' +
+                    '<p class="wpfe-error-details">Field: ' + WPFE.utils.escapeHTML(fieldName) + '</p>' +
+                    '<button type="button" class="wpfe-close-button button">' + 
+                    (wpfe_data.i18n.close || 'Close') + '</button>' +
                     '</div>'
                 );
+                console.error('Failed to render field:', fieldName, response);
                 return;
             }
             
+            // Clear previous content
+            sidebarContent.empty();
+            
             // Get field data
             var fieldData = response.data;
+            
+            // Safety check - ensure we have field data
+            if (!fieldData) {
+                sidebarContent.html(
+                    '<div class="wpfe-error">' +
+                    '<p>No field data was returned by the server</p>' +
+                    '<p class="wpfe-error-details">Field: ' + WPFE.utils.escapeHTML(fieldName) + '</p>' +
+                    '<button type="button" class="wpfe-close-button button">' + 
+                    (wpfe_data.i18n.close || 'Close') + '</button>' +
+                    '</div>'
+                );
+                console.error('No field data in response for:', fieldName, response);
+                return;
+            }
+            
+            // Handle different field sources and special cases
+            var source = fieldData.source || 'wordpress';
             
             // If we have pre-rendered HTML from the server, use it directly
             if (fieldData.html) {
@@ -591,52 +618,107 @@ WPFE.fields = (function($) {
             // Otherwise, use the client-side rendering
             var fieldHTML = '';
             
-            // Basic field wrapper template
-            var fieldWrapper = WPFE.utils.getTemplate('field', {
-                field_name: fieldName,
-                field_content: '{field_content}'
-            });
-            
-            // Render specific field type
-            switch (fieldData.type) {
-                case 'text':
-                case 'string':
-                    fieldHTML = renderTextField(fieldData);
-                    break;
+            try {
+                // Special handling for WordPress core fields
+                if (source === 'wordpress' && (fieldName === 'post_title' || fieldName === 'post_content' || fieldName === 'post_excerpt')) {
+                    // Force field types for WordPress core fields
+                    if (fieldName === 'post_title') {
+                        fieldData.type = 'text';
+                    } else if (fieldName === 'post_content') {
+                        fieldData.type = 'wysiwyg';
+                    } else if (fieldName === 'post_excerpt') {
+                        fieldData.type = 'textarea';
+                    }
                     
-                case 'textarea':
-                    fieldHTML = renderTextareaField(fieldData);
-                    break;
-                    
-                case 'wysiwyg':
-                case 'rich_text':
-                    fieldHTML = renderWysiwygField(fieldData);
-                    break;
-                    
-                case 'image':
-                    fieldHTML = renderImageField(fieldData);
-                    break;
-                    
-                case 'gallery':
-                    fieldHTML = renderGalleryField(fieldData);
-                    break;
-                    
-                default:
-                    // Default to text field for unknown types
-                    fieldHTML = renderTextField(fieldData);
+                    // Add better labels
+                    if (!fieldData.label) {
+                        if (fieldName === 'post_title') {
+                            fieldData.label = 'Title';
+                        } else if (fieldName === 'post_content') {
+                            fieldData.label = 'Content';
+                        } else if (fieldName === 'post_excerpt') {
+                            fieldData.label = 'Excerpt';
+                        }
+                    }
+                }
+                
+                // Basic field wrapper template
+                var fieldWrapper = WPFE.utils.getTemplate('field', {
+                    field_name: fieldName,
+                    field_content: '{field_content}'
+                });
+                
+                // Render specific field type
+                switch (fieldData.type) {
+                    case 'text':
+                    case 'string':
+                        fieldHTML = renderTextField(fieldData);
+                        break;
+                        
+                    case 'textarea':
+                        fieldHTML = renderTextareaField(fieldData);
+                        break;
+                        
+                    case 'wysiwyg':
+                    case 'rich_text':
+                        fieldHTML = renderWysiwygField(fieldData);
+                        break;
+                        
+                    case 'image':
+                        fieldHTML = renderImageField(fieldData);
+                        break;
+                        
+                    case 'gallery':
+                        fieldHTML = renderGalleryField(fieldData);
+                        break;
+                        
+                    default:
+                        // For unknown types, use text field but add a warning message
+                        if (wpfe_data.debug_mode) {
+                            console.warn('Unknown field type:', fieldData.type, 'for field:', fieldName);
+                        }
+                        
+                        // Add warning that this is a fallback rendering
+                        fieldData.description = (fieldData.description || '') + 
+                            ' <span class="wpfe-field-warning">Field type "' + 
+                            WPFE.utils.escapeHTML(fieldData.type) + 
+                            '" is not fully supported and is being rendered as a text field.</span>';
+                        
+                        fieldHTML = renderTextField(fieldData);
+                }
+                
+                // Insert field content into wrapper
+                fieldWrapper = fieldWrapper.replace('{field_content}', fieldHTML);
+                
+                // Set sidebar content
+                sidebarContent.html(fieldWrapper);
+                
+                // Set field type data attribute
+                sidebarContent.find('.wpfe-field-wrapper').attr('data-wpfe-field-type', fieldData.type);
+                
+                // If this is a placeholder field, add a visual indicator
+                if (fieldData.placeholder) {
+                    sidebarContent.find('.wpfe-field-wrapper').addClass('wpfe-placeholder-field');
+                }
+                
+                // Trigger an event that the field was loaded
+                $(document).trigger('wpfe:field_loaded', [fieldName, fieldData]);
+            } catch (error) {
+                console.error('Error rendering field:', error, fieldData);
+                
+                // Show error but attempt partial recovery
+                sidebarContent.html(
+                    '<div class="wpfe-error">' +
+                    '<p>Error rendering field: ' + error.message + '</p>' +
+                    '<div class="wpfe-editor-field">' +
+                    '<label for="wpfe-field-fallback">' + (fieldData.label || fieldName) + '</label>' +
+                    '<div class="wpfe-editor-field-input">' +
+                    '<input type="text" id="wpfe-field-value" name="wpfe-field-value" value="' + 
+                    (fieldData.value ? WPFE.utils.escapeHTML(fieldData.value) : '') + '">' +
+                    '</div></div>' +
+                    '</div>'
+                );
             }
-            
-            // Insert field content into wrapper
-            fieldWrapper = fieldWrapper.replace('{field_content}', fieldHTML);
-            
-            // Set sidebar content
-            sidebarContent.html(fieldWrapper);
-            
-            // Set field type data attribute
-            sidebarContent.find('.wpfe-field-wrapper').attr('data-wpfe-field-type', fieldData.type);
-            
-            // Trigger an event that the field was loaded
-            $(document).trigger('wpfe:field_loaded', [fieldName, fieldData]);
         },
         
         /**

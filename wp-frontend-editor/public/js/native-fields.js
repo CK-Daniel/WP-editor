@@ -238,9 +238,40 @@ WPFE.nativeFields = (function($) {
      * Initialize taxonomy field handling
      */
     function initTaxonomyField() {
-        // Track checkbox/radio changes
+        // Track changes on WordPress native taxonomy fields
+        $('.wpfe-category-checklist input, .wpfe-taxonomy-checklist input').on('change', function() {
+            markFieldAsChanged();
+        });
+        
+        // Track changes on WordPress native tag fields
+        $('.wpfe-tag-input, .wpfe-taxonomy-input').on('change input blur', function() {
+            markFieldAsChanged();
+        });
+        
+        // Track changes on ACF taxonomy fields
         $('.acf-taxonomy-field input').on('change', function() {
             markFieldAsChanged();
+        });
+        
+        // Add a smarter tag suggestion system
+        $('.wpfe-tag-input, .wpfe-taxonomy-input').each(function() {
+            var $input = $(this);
+            var taxonomyName = $input.attr('name').replace('tax_', '');
+            
+            // Only add if WordPress script is available
+            if (typeof wp !== 'undefined' && typeof wp.ajax !== 'undefined' && typeof wp.ajax.post !== 'undefined') {
+                // Try to initialize tag suggestions similar to WordPress admin
+                try {
+                    $input.suggest(ajaxurl + '?action=ajax-tag-search&tax=' + taxonomyName, {
+                        delay: 500,
+                        minchars: 2,
+                        multiple: true,
+                        multipleSep: ', '
+                    });
+                } catch (e) {
+                    console.warn('Could not initialize tag suggestions:', e);
+                }
+            }
         });
     }
     
@@ -269,9 +300,32 @@ WPFE.nativeFields = (function($) {
             $form = $('.wpfe-native-field-editor');
         }
         
+        // Log debugging information about the form state
+        if (wpfe_data.debug_mode) {
+            console.log('Getting field values from form:', {
+                fieldData: fieldData,
+                formExists: $form.length > 0,
+                formVisible: $form.is(':visible')
+            });
+        }
+        
+        // Field name normalization map (allows both 'title' and 'post_title' to work)
+        var fieldMapping = {
+            'title': 'post_title',
+            'content': 'post_content',
+            'excerpt': 'post_excerpt',
+            'featured_image': 'post_thumbnail'
+        };
+        
+        // Normalize field name if needed
+        var normalizedFieldName = fieldData.fieldName;
+        if (fieldMapping[normalizedFieldName]) {
+            normalizedFieldName = fieldMapping[normalizedFieldName];
+        }
+        
         // WordPress native fields
         if (fieldData.fieldSource === 'wordpress') {
-            switch (fieldData.fieldType) {
+            switch (normalizedFieldName) {
                 case 'post_title':
                     // Cache field element if not already cached
                     if (!$fieldElements.post_title) {
@@ -308,11 +362,48 @@ WPFE.nativeFields = (function($) {
                     }
                     values.post_thumbnail = $fieldElements.post_thumbnail.val();
                     break;
-                    
+                
+                case 'post_tags':
+                    // Cache field element if not already cached
+                    if (!$fieldElements.post_tags) {
+                        $fieldElements.post_tags = $form.find('input[name="post_tags"]');
+                    }
+                    values.post_tags = $fieldElements.post_tags.val();
+                    break;
+                
+                case 'post_categories':
+                    // Handle categories (checkboxes)
+                    var categoryIds = [];
+                    $form.find('input[name="post_category[]"]:checked').each(function() {
+                        categoryIds.push($(this).val());
+                    });
+                    values.post_categories = categoryIds;
+                    break;
+                
                 default:
+                    // Check for custom taxonomies (both hierarchical and non-hierarchical)
+                    var taxonomyMatch = normalizedFieldName.match(/^tax_(.+)$/);
+                    if (taxonomyMatch) {
+                        var taxName = taxonomyMatch[1];
+                        
+                        // Check if it's a hierarchical taxonomy (checkboxes)
+                        var $checkboxes = $form.find('input[name="tax_' + taxName + '[]"]:checked');
+                        if ($checkboxes.length > 0) {
+                            var termIds = [];
+                            $checkboxes.each(function() {
+                                termIds.push($(this).val());
+                            });
+                            values['tax_' + taxName] = termIds;
+                        } else {
+                            // It's a non-hierarchical taxonomy (text input)
+                            values['tax_' + taxName] = $form.find('input[name="tax_' + taxName + '"]').val();
+                        }
+                        break;
+                    }
+                    
                     // Handle meta fields
-                    if (fieldData.fieldName && fieldData.fieldName.indexOf('meta_') === 0) {
-                        var metaKey = fieldData.fieldName.substr(5);
+                    if (normalizedFieldName && normalizedFieldName.indexOf('meta_') === 0) {
+                        var metaKey = normalizedFieldName.substr(5);
                         var cacheKey = 'meta_' + metaKey;
                         
                         // Cache field element if not already cached
@@ -321,6 +412,25 @@ WPFE.nativeFields = (function($) {
                         }
                         
                         values[cacheKey] = $fieldElements[cacheKey].val();
+                        
+                        // For array values stored as JSON
+                        try {
+                            if (values[cacheKey] && values[cacheKey].trim().indexOf('{') === 0) {
+                                var jsonValue = JSON.parse(values[cacheKey]);
+                                values[cacheKey] = jsonValue;
+                            }
+                        } catch(e) {
+                            console.warn('Failed to parse JSON meta value for ' + cacheKey, e);
+                        }
+                    }
+                    
+                    // Direct field access for any form element with a name attribute 
+                    // that matches the field name (fallback for any unhandled fields)
+                    if (!Object.keys(values).length) {
+                        var $directField = $form.find('[name="' + normalizedFieldName + '"]');
+                        if ($directField.length) {
+                            values[normalizedFieldName] = $directField.val();
+                        }
                     }
             }
         }
@@ -365,6 +475,12 @@ WPFE.nativeFields = (function($) {
             
                 // Initialize the field handlers
                 initFieldHandlers(data);
+                
+                // Always check for taxonomy fields regardless of field type
+                // as they may be part of any rendering
+                setTimeout(function() {
+                    initTaxonomyField();
+                }, 100);
             });
             
             // Reset module on editor close

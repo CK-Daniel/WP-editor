@@ -60,7 +60,29 @@ class WP_Frontend_Editor_Native_Field_Loader {
             return '<div class="wpfe-error">' . esc_html__( 'Post not found', 'wp-frontend-editor' ) . '</div>';
         }
 
-        // Based on field name, render the appropriate editor
+        // Create field mappings to normalize field names
+        $field_mappings = array(
+            'title' => 'post_title',
+            'content' => 'post_content',
+            'excerpt' => 'post_excerpt',
+            'featured_image' => 'post_thumbnail',
+        );
+        
+        // Normalize field name (handle both 'title' and 'post_title' formats)
+        if (isset($field_mappings[$field_name])) {
+            $field_name = $field_mappings[$field_name];
+        }
+        
+        // Log field information for debugging
+        if (function_exists('wpfe_log')) {
+            wpfe_log('Rendering native field', 'debug', array(
+                'field_name' => $field_name,
+                'post_id' => $post_id,
+                'post_type' => $post->post_type
+            ));
+        }
+        
+        // Based on normalized field name, render the appropriate editor
         switch ( $field_name ) {
             case 'post_title':
                 return $this->render_title_field( $post );
@@ -74,6 +96,12 @@ class WP_Frontend_Editor_Native_Field_Loader {
             case 'post_thumbnail':
                 return $this->render_featured_image_field( $post );
                 
+            case 'post_categories':
+                return $this->render_category_field( $post );
+                
+            case 'post_tags':
+                return $this->render_tag_field( $post );
+                
             default:
                 // Check if this is a post meta field
                 if ( strpos( $field_name, 'meta_' ) === 0 ) {
@@ -81,7 +109,25 @@ class WP_Frontend_Editor_Native_Field_Loader {
                     return $this->render_meta_field( $post, $meta_key );
                 }
                 
-                return '<div class="wpfe-error">' . esc_html__( 'Unknown field type', 'wp-frontend-editor' ) . '</div>';
+                // Try directly as a meta key (fallback)
+                $meta_value = get_post_meta( $post->ID, $field_name, true );
+                if ( $meta_value !== '' ) {
+                    return $this->render_meta_field( $post, $field_name );
+                }
+                
+                // Check for custom taxonomies
+                $taxonomies = get_object_taxonomies($post->post_type, 'objects');
+                foreach ($taxonomies as $tax_name => $taxonomy) {
+                    if ($tax_name === $field_name || 'tax_' . $tax_name === $field_name) {
+                        return $this->render_taxonomy_field($post, $tax_name, $taxonomy);
+                    }
+                }
+                
+                return '<div class="wpfe-error">' . 
+                       esc_html__( 'Field not recognized:', 'wp-frontend-editor' ) . ' ' . 
+                       esc_html( $field_name ) . 
+                       '<br><small>' . esc_html__( 'If this is a custom field, prefix it with "meta_" to edit it.', 'wp-frontend-editor' ) . '</small>' .
+                       '</div>';
         }
     }
 
@@ -309,6 +355,125 @@ class WP_Frontend_Editor_Native_Field_Loader {
             <?php else : ?>
                 <input type="text" id="wpfe-meta-<?php echo esc_attr( $meta_key ); ?>" name="meta_<?php echo esc_attr( $meta_key ); ?>" value="<?php echo esc_attr( $meta_value ); ?>" class="wpfe-field-input wpfe-meta-input">
             <?php endif; ?>
+        </div>
+        <?php
+        
+        return ob_get_clean();
+    }
+    
+    /**
+     * Render a category field
+     *
+     * @param WP_Post $post The post object
+     * @return string The HTML
+     */
+    private function render_category_field( $post ) {
+        $selected_cats = wp_get_post_categories( $post->ID );
+        
+        ob_start();
+        ?>
+        <div class="wpfe-native-field wpfe-taxonomy-field">
+            <label><?php esc_html_e( 'Categories', 'wp-frontend-editor' ); ?></label>
+            
+            <div class="wpfe-taxonomy-wrapper">
+                <?php
+                // Create the category checklist with proper nesting
+                $args = array(
+                    'selected_cats' => $selected_cats,
+                    'echo' => true,
+                );
+                
+                echo '<div class="wpfe-category-checklist">';
+                wp_terms_checklist( $post->ID, $args );
+                echo '</div>';
+                ?>
+                
+                <input type="hidden" name="post_categories_original" value="<?php echo esc_attr( implode( ',', $selected_cats ) ); ?>">
+            </div>
+            
+            <p class="description"><?php esc_html_e( 'Select categories for this post.', 'wp-frontend-editor' ); ?></p>
+        </div>
+        <?php
+        
+        return ob_get_clean();
+    }
+    
+    /**
+     * Render a tag field
+     *
+     * @param WP_Post $post The post object
+     * @return string The HTML
+     */
+    private function render_tag_field( $post ) {
+        $post_tags = wp_get_post_tags( $post->ID, array( 'fields' => 'names' ) );
+        $tags_string = implode( ', ', $post_tags );
+        
+        ob_start();
+        ?>
+        <div class="wpfe-native-field wpfe-tag-field">
+            <label for="wpfe-post-tags"><?php esc_html_e( 'Tags', 'wp-frontend-editor' ); ?></label>
+            
+            <div class="wpfe-tag-wrapper">
+                <input type="text" id="wpfe-post-tags" name="post_tags" value="<?php echo esc_attr( $tags_string ); ?>" class="wpfe-field-input wpfe-tag-input" aria-describedby="wpfe-tag-description">
+            </div>
+            
+            <p id="wpfe-tag-description" class="description"><?php esc_html_e( 'Separate tags with commas.', 'wp-frontend-editor' ); ?></p>
+        </div>
+        <?php
+        
+        return ob_get_clean();
+    }
+    
+    /**
+     * Render a custom taxonomy field
+     *
+     * @param WP_Post   $post     The post object
+     * @param string    $taxonomy The taxonomy name
+     * @param WP_Taxonomy $tax_obj  The taxonomy object
+     * @return string The HTML
+     */
+    private function render_taxonomy_field( $post, $taxonomy, $tax_obj ) {
+        // Get selected terms for this post
+        $selected_terms = wp_get_object_terms( $post->ID, $taxonomy, array( 'fields' => 'ids' ) );
+        $tax_name = $tax_obj->labels->singular_name;
+        
+        ob_start();
+        ?>
+        <div class="wpfe-native-field wpfe-taxonomy-field">
+            <label><?php echo esc_html( $tax_obj->labels->name ); ?></label>
+            
+            <div class="wpfe-taxonomy-wrapper">
+                <?php
+                // For hierarchical taxonomies (like categories), show a checklist
+                if ( $tax_obj->hierarchical ) {
+                    $args = array(
+                        'taxonomy'      => $taxonomy,
+                        'selected_cats' => $selected_terms,
+                        'echo'          => true,
+                    );
+                    
+                    echo '<div class="wpfe-taxonomy-checklist">';
+                    wp_terms_checklist( 0, $args );
+                    echo '</div>';
+                } 
+                // For non-hierarchical taxonomies (like tags), show a text input
+                else {
+                    $terms = wp_get_object_terms( $post->ID, $taxonomy, array( 'fields' => 'names' ) );
+                    $terms_string = implode( ', ', $terms );
+                    ?>
+                    <input type="text" id="wpfe-taxonomy-<?php echo esc_attr( $taxonomy ); ?>" 
+                           name="tax_<?php echo esc_attr( $taxonomy ); ?>" 
+                           value="<?php echo esc_attr( $terms_string ); ?>" 
+                           class="wpfe-field-input wpfe-taxonomy-input" 
+                           aria-describedby="wpfe-tax-description-<?php echo esc_attr( $taxonomy ); ?>">
+                    <p id="wpfe-tax-description-<?php echo esc_attr( $taxonomy ); ?>" class="description">
+                        <?php echo esc_html( sprintf( __( 'Separate %s with commas.', 'wp-frontend-editor' ), strtolower( $tax_name ) ) ); ?>
+                    </p>
+                    <?php
+                }
+                ?>
+                <input type="hidden" name="tax_<?php echo esc_attr( $taxonomy ); ?>_original" value="<?php echo esc_attr( implode( ',', $selected_terms ) ); ?>">
+            </div>
         </div>
         <?php
         

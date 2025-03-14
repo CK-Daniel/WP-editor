@@ -31,6 +31,49 @@
     font-size: 14px;
 }
 
+/* Taxonomy Fields */
+.wpfe-taxonomy-wrapper,
+.wpfe-tag-wrapper {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 12px;
+    margin-top: 5px;
+}
+
+.wpfe-category-checklist,
+.wpfe-taxonomy-checklist {
+    margin: 0;
+    padding: 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.wpfe-category-checklist ul,
+.wpfe-taxonomy-checklist ul {
+    padding-left: 18px;
+    margin: 0;
+}
+
+.wpfe-category-checklist li,
+.wpfe-taxonomy-checklist li {
+    margin-bottom: 4px;
+    list-style: none;
+}
+
+.wpfe-category-checklist input[type="checkbox"],
+.wpfe-taxonomy-checklist input[type="checkbox"] {
+    margin-right: 6px;
+}
+
+.wpfe-taxonomy-input,
+.wpfe-tag-input {
+    width: 100%;
+    padding: 8px !important;
+    border: 1px solid #ddd !important;
+    border-radius: 3px !important;
+}
+
 .wpfe-field-input:focus {
     border-color: #007cba;
     box-shadow: 0 0 0 1px #007cba;
