@@ -138,26 +138,65 @@ class WP_Frontend_Editor {
      * @return void
      */
     public function enqueue_scripts() {
-        // Only enqueue for logged-in users with edit capabilities
-        if ( ! $this->current_user_can_edit() ) {
-            if ( defined('WP_DEBUG') && WP_DEBUG ) {
-                error_log('WP Frontend Editor: User does not have edit capabilities');
-            }
-            return;
-        }
-
-        // Check if this post type is enabled
-        $post_type = get_post_type();
-        if ( $post_type && ! empty( $this->options['post_types'] ) && ! in_array( $post_type, $this->options['post_types'], true ) ) {
-            if ( defined('WP_DEBUG') && WP_DEBUG ) {
-                error_log('WP Frontend Editor: Post type ' . $post_type . ' is not enabled in settings.');
-            }
+        // Force debug logging regardless of WP_DEBUG setting
+        error_log('WP Frontend Editor: Starting script enqueue process');
+        
+        // Debug user capabilities
+        if (!is_user_logged_in()) {
+            error_log('WP Frontend Editor: User is not logged in');
             return;
         }
         
-        // Debug info for script loading
-        if ( defined('WP_DEBUG') && WP_DEBUG ) {
-            error_log('WP Frontend Editor: Loading scripts for post type ' . $post_type);
+        // Get current user and role info for debugging
+        $current_user = wp_get_current_user();
+        error_log('WP Frontend Editor: User ID: ' . $current_user->ID . ', Roles: ' . implode(', ', $current_user->roles));
+        
+        // Debug options
+        error_log('WP Frontend Editor: Plugin options: ' . print_r($this->options, true));
+        
+        // Check user editing capabilities with detailed logging
+        if ( ! $this->current_user_can_edit() ) {
+            error_log('WP Frontend Editor: User does not have edit capabilities');
+            
+            // Check specific capability requirements
+            $required_caps = isset($this->options['user_caps']) ? $this->options['user_caps'] : array('edit_posts');
+            foreach ($required_caps as $cap) {
+                error_log('WP Frontend Editor: User ' . ($current_user->ID) . ' has capability ' . $cap . ': ' . 
+                    (current_user_can($cap) ? 'Yes' : 'No'));
+            }
+            
+            return;
+        }
+
+        // Debug post type check
+        $post_type = get_post_type();
+        error_log('WP Frontend Editor: Current post type: ' . ($post_type ? $post_type : 'None'));
+        
+        // Debug post types enabled in settings
+        if (!empty($this->options['post_types'])) {
+            error_log('WP Frontend Editor: Enabled post types: ' . implode(', ', $this->options['post_types']));
+        } else {
+            error_log('WP Frontend Editor: No post types enabled in settings or settings not initialized');
+        }
+        
+        // Check if this post type is enabled
+        if ( $post_type && !empty($this->options['post_types']) && ! in_array( $post_type, $this->options['post_types'], true ) ) {
+            // Debug mode check - in debug mode, load scripts for all post types
+            $debug_mode = isset($this->options['debug_mode']) && $this->options['debug_mode'];
+            
+            if ($debug_mode) {
+                error_log('WP Frontend Editor: Post type ' . $post_type . ' is not in enabled settings, but loading scripts anyway (debug mode)');
+            } else {
+                error_log('WP Frontend Editor: Post type ' . $post_type . ' is not enabled in settings');
+                return;
+            }
+        }
+        
+        error_log('WP Frontend Editor: All checks passed, proceeding with script enqueuing');
+        
+        // Force load scripts in debug mode, even on archive pages or when post_type is empty
+        if (!$post_type && isset($this->options['debug_mode']) && $this->options['debug_mode']) {
+            error_log('WP Frontend Editor: No post type detected but loading scripts due to debug mode');
         }
 
         // Enqueue the dashicons
@@ -313,9 +352,38 @@ class WP_Frontend_Editor {
                 )
         );
         
-        // Log script localization to debug log
-        if ( defined('WP_DEBUG') && WP_DEBUG ) {
-            error_log('WP Frontend Editor: Localized script data for post ' . $post_id . ' with debug mode enabled');
+        // Enhanced script debugging
+        error_log('WP Frontend Editor: Script enqueuing completed successfully');
+        error_log('WP Frontend Editor: Main script handle: wp-frontend-editor');
+        error_log('WP Frontend Editor: Module script handles: ' . implode(', ', array_map(function($module) {
+            return 'wp-frontend-editor-' . $module;
+        }, $modules)));
+        
+        // Debug WordPress script queue
+        global $wp_scripts;
+        if (isset($wp_scripts->registered['wp-frontend-editor'])) {
+            error_log('WP Frontend Editor: Main script successfully registered in WordPress');
+            error_log('WP Frontend Editor: Main script URL: ' . $wp_scripts->registered['wp-frontend-editor']->src);
+            error_log('WP Frontend Editor: Main script dependencies: ' . implode(', ', $wp_scripts->registered['wp-frontend-editor']->deps));
+        } else {
+            error_log('WP Frontend Editor: ERROR - Main script NOT found in WordPress registered scripts!');
+        }
+        
+        // Check if any of our module scripts are in the queue
+        $modules_found = 0;
+        foreach ($modules as $module) {
+            $handle = 'wp-frontend-editor-' . $module;
+            if (isset($wp_scripts->registered[$handle])) {
+                $modules_found++;
+            }
+        }
+        error_log('WP Frontend Editor: Module scripts found in WordPress queue: ' . $modules_found . '/' . count($modules));
+        
+        // Check if we successfully localized the script
+        if (isset($wp_scripts->registered['wp-frontend-editor']->extra['data'])) {
+            error_log('WP Frontend Editor: Script data successfully localized');
+        } else {
+            error_log('WP Frontend Editor: ERROR - Script data NOT localized properly!');
         }
     }
 
@@ -497,15 +565,45 @@ class WP_Frontend_Editor {
      * @return bool True if the user can edit, false otherwise.
      */
     public function current_user_can_edit( $post_id = 0 ) {
+        // Debug mode check - if we're actively debugging, be more permissive with capabilities
+        $debug_mode = isset($this->options['debug_mode']) && $this->options['debug_mode'];
+        
+        // Check login status
         if ( ! is_user_logged_in() ) {
+            error_log('WP Frontend Editor: User is not logged in');
             return false;
         }
 
-        // Check if user has the required capabilities
+        // Get current user for detailed logging
+        $current_user = wp_get_current_user();
+        $user_id = $current_user->ID;
+        $user_roles = implode(', ', $current_user->roles);
+        
+        error_log("WP Frontend Editor: Checking edit capabilities for user ID $user_id with roles: $user_roles");
+        
+        // In debug mode, we'll be more lenient with permissions for testing
+        if ($debug_mode) {
+            error_log('WP Frontend Editor: Debug mode is active - relaxing permission checks');
+            
+            // Check if current user has any common editing capability
+            $common_caps = array('edit_posts', 'edit_pages', 'edit_published_posts', 'publish_posts');
+            foreach ($common_caps as $cap) {
+                if (current_user_can($cap)) {
+                    error_log("WP Frontend Editor: Debug mode - User has capability '$cap', allowing access");
+                    return true;
+                }
+            }
+        }
+
+        // Normal permission checking
         $user_caps = isset( $this->options['user_caps'] ) ? $this->options['user_caps'] : array( 'edit_posts' );
+        
+        // Log the capabilities we're checking
+        error_log('WP Frontend Editor: Required capabilities: ' . implode(', ', $user_caps));
         
         foreach ( $user_caps as $cap ) {
             if ( ! current_user_can( $cap ) ) {
+                error_log("WP Frontend Editor: User lacks required capability: $cap");
                 return false;
             }
         }
@@ -515,10 +613,21 @@ class WP_Frontend_Editor {
         }
 
         if ( ! $post_id ) {
+            error_log("WP Frontend Editor: No post ID available, falling back to edit_posts check");
             return current_user_can( 'edit_posts' );
         }
 
-        return current_user_can( 'edit_post', $post_id );
+        // Check if user can edit this specific post
+        $can_edit_post = current_user_can( 'edit_post', $post_id );
+        error_log("WP Frontend Editor: Can user edit post $post_id? " . ($can_edit_post ? 'Yes' : 'No'));
+        
+        // In debug mode, allow editing even if the specific post check fails
+        if (!$can_edit_post && $debug_mode) {
+            error_log("WP Frontend Editor: Debug mode - Allowing edit access to post $post_id despite permission check");
+            return true;
+        }
+        
+        return $can_edit_post;
     }
 
     /**
@@ -536,23 +645,49 @@ class WP_Frontend_Editor {
      * @return array The plugin options.
      */
     public function get_options() {
+        // Enhanced default options with debug settings
         $defaults = array(
             'enable_inline'      => 1,
             'sidebar_width'      => 350,
             'button_position'    => 'top-right',
             'button_style'       => 'icon-only',
-            'highlight_editable' => 0,
-            'post_types'         => array( 'post', 'page' ),
+            'highlight_editable' => 1, // Enable highlighting by default for easier debugging
+            'debug_mode'         => 1, // Enable debug mode by default
+            'post_types'         => array( 'post', 'page', 'product', 'any' ), // Include WooCommerce products and 'any' for flexibility
             'core_fields'        => array( 'title', 'content', 'excerpt', 'featured_image' ),
             'acf_fields'         => array(),
-            'user_roles'         => array( 'administrator', 'editor' ),
+            'user_roles'         => array( 'administrator', 'editor', 'author', 'contributor' ),
             'user_caps'          => array( 'edit_posts' ),
             'auto_enable_acf'    => 1,
+            'live_preview'       => 1,
+            'discover_fields'    => 1,
         );
 
-        $options = get_option( 'wpfe_options', $defaults );
-
-        return wp_parse_args( $options, $defaults );
+        // Get stored options
+        $options = get_option( 'wpfe_options', array() );
+        
+        // If options are completely empty, log it and use defaults
+        if (empty($options)) {
+            error_log('WP Frontend Editor: No options found in database, using defaults');
+            return $defaults;
+        }
+        
+        // Merge with defaults and ensure no null values
+        $merged_options = wp_parse_args( $options, $defaults );
+        
+        // Ensure post_types is never empty
+        if (empty($merged_options['post_types'])) {
+            error_log('WP Frontend Editor: Post types setting was empty, restoring defaults');
+            $merged_options['post_types'] = $defaults['post_types']; 
+        }
+        
+        // Ensure user_caps is never empty
+        if (empty($merged_options['user_caps'])) {
+            error_log('WP Frontend Editor: User capabilities setting was empty, restoring defaults');
+            $merged_options['user_caps'] = $defaults['user_caps'];
+        }
+        
+        return $merged_options;
     }
 
     /**

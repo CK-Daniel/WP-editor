@@ -33,6 +33,27 @@ define( 'WPFE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'WPFE_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 define( 'WPFE_PLUGIN_FILE', __FILE__ );
 
+// Log plugin paths for debugging
+if ( defined('WP_DEBUG') && WP_DEBUG ) {
+    error_log('WP Frontend Editor: Plugin Directory Path: ' . WPFE_PLUGIN_DIR);
+    error_log('WP Frontend Editor: Plugin URL: ' . WPFE_PLUGIN_URL);
+    error_log('WP Frontend Editor: Plugin File: ' . __FILE__);
+    
+    // Check if critical files exist
+    $files_to_check = array(
+        'includes/class-wp-frontend-editor.php',
+        'public/js/frontend-editor.js',
+        'public/js/modules/core.js',
+        'public/css/frontend-editor.css',
+        'public/templates/editor-sidebar.php'
+    );
+    
+    foreach ($files_to_check as $file) {
+        $full_path = WPFE_PLUGIN_DIR . $file;
+        error_log('WP Frontend Editor: File check - ' . $file . ': ' . (file_exists($full_path) ? 'EXISTS' : 'MISSING'));
+    }
+}
+
 /**
  * The code that runs during plugin activation.
  */
