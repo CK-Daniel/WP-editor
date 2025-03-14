@@ -32,6 +32,44 @@ WPFE.events = (function($) {
 
     // Private functions
     /**
+     * Helper function to show error in sidebar consistently
+     * 
+     * @param {jQuery} sidebar The sidebar element
+     * @param {string} errorMessage The main error message
+     * @param {string} detailsMessage Optional details message
+     */
+    function showSidebarError(sidebar, errorMessage, detailsMessage) {
+        // Make sure we update the correct element
+        var $sidebarContent = sidebar.find('.wpfe-editor-sidebar-content');
+        if (!$sidebarContent.length) {
+            $sidebarContent = sidebar;
+        }
+        
+        // Prepare error HTML
+        var errorHtml = 
+            '<div class="wpfe-error">' +
+            '<p>' + (errorMessage || 'Unknown error') + '</p>';
+            
+        if (detailsMessage) {
+            errorHtml += '<p class="wpfe-error-details">' + detailsMessage + '</p>';
+        }
+        
+        errorHtml += 
+            '<div class="wpfe-error-actions">' +
+            '<button type="button" class="wpfe-close-button button">' + 
+            (wpfe_data.i18n.close || 'Close') + '</button>' +
+            '</div></div>';
+            
+        $sidebarContent.html(errorHtml);
+        
+        // Ensure error button is visible
+        sidebar.find('.wpfe-close-button').show();
+        
+        // Log error to console for debugging
+        console.error('Sidebar error:', errorMessage);
+    }
+    
+    /**
      * Open the editor sidebar for a specific field.
      * 
      * @param {string} fieldName The field name to edit.
@@ -180,10 +218,17 @@ WPFE.events = (function($) {
             }
             
             // Clear any previous content and show loading indicator
+            // Make sure we use the correct loading class name matching the CSS
             $sidebarContent.html(
-                '<div class="wpfe-loading"><span class="dashicons dashicons-update-alt"></span> ' + 
-                (wpfe_data.i18n.loading || 'Loading...') + 
-                '<div class="wpfe-loading-details">Fetching field data...</div></div>'
+                '<div class="wpfe-editor-sidebar-loading">' +
+                '<div class="wpfe-editor-loading-spinner">' +
+                '<div class="wpfe-spinner-dot"></div>' +
+                '<div class="wpfe-spinner-dot"></div>' +
+                '<div class="wpfe-spinner-dot"></div>' +
+                '</div>' +
+                '<p>' + (wpfe_data.i18n.loading || 'Loading...') + '</p>' +
+                '<div class="wpfe-loading-details">Fetching field data...</div>' +
+                '</div>'
             );
             
             WPFE.ajax.fetchField(fieldName, postId, function(response) {
@@ -193,18 +238,8 @@ WPFE.events = (function($) {
                         var errorMessage = response && response.data && response.data.message ? 
                             response.data.message : 'Unknown error loading field';
                         
-                        // Make sure we update the correct element
-                        var $sidebarContent = sidebar.find('.wpfe-editor-sidebar-content');
-                        if (!$sidebarContent.length) {
-                            $sidebarContent = sidebar;
-                        }
-                        
-                        $sidebarContent.html(
-                            '<div class="wpfe-error"><p>' + errorMessage + '</p>' +
-                            '<p class="wpfe-error-details">Please try again or contact the site administrator if this problem persists.</p>' +
-                            '<button type="button" class="wpfe-close-button button">' + 
-                            (wpfe_data.i18n.close || 'Close') + '</button></div>'
-                        );
+                        // Use our helper function for showing errors in sidebar
+                        showSidebarError(sidebar, errorMessage, 'Please try again or contact the site administrator if this problem persists.');
                         console.error('Error loading field:', errorMessage, response);
                         return;
                     }
@@ -238,19 +273,8 @@ WPFE.events = (function($) {
                 } catch (err) {
                     console.error('Error processing field data:', err);
                     
-                    // Make sure we update the correct element
-                    var $sidebarContent = sidebar.find('.wpfe-editor-sidebar-content');
-                    if (!$sidebarContent.length) {
-                        $sidebarContent = sidebar;
-                    }
-                    
-                    $sidebarContent.html(
-                        '<div class="wpfe-error">' +
-                        '<p>Error rendering field editor</p>' +
-                        '<p class="wpfe-error-details">Technical details: ' + err.message + '</p>' +
-                        '<button type="button" class="wpfe-close-button button">' + 
-                        (wpfe_data.i18n.close || 'Close') + '</button></div>'
-                    );
+                    // Use our helper function for showing errors in sidebar
+                    showSidebarError(sidebar, 'Error rendering field editor', 'Technical details: ' + err.message);
                 }
             });
             

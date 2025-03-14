@@ -67,11 +67,15 @@ WPFE.ajax = (function($) {
     function executeRequest(requestKey, data, callback) {
         pendingRequests[requestKey] = true;
         
+        // Log the request for debugging
+        console.log('WPFE: Executing AJAX request:', data.action, requestKey);
+        
         $.ajax({
             url: wpfe_data.ajax_url,
             type: 'POST',
             data: data,
             dataType: 'json',
+            timeout: 30000, // 30 second timeout
             success: function(response) {
                 delete pendingRequests[requestKey];
                 
@@ -231,11 +235,21 @@ WPFE.ajax = (function($) {
                 
                 // Force the sidebar to show an error to prevent indefinite loading
                 var $sidebar = $('#wpfe-editor-sidebar');
-                if ($sidebar.length && $sidebar.find('.wpfe-editor-sidebar-loading').is(':visible')) {
-                    $sidebar.find('.wpfe-editor-sidebar-content').html(
-                        '<div class="wpfe-error"><p>Request timed out while loading the editor.</p>' +
+                if ($sidebar.length) {
+                    // Find the content container
+                    var $contentContainer = $sidebar.find('.wpfe-editor-sidebar-content');
+                    if (!$contentContainer.length) {
+                        $contentContainer = $sidebar;
+                    }
+                    
+                    // Add error message with properly styled error display
+                    $contentContainer.html(
+                        '<div class="wpfe-error">' +
+                        '<p>Request timed out while loading the editor.</p>' +
                         '<p class="wpfe-error-details">Please try again or reload the page.</p>' +
-                        '<button type="button" class="wpfe-close-button button">Close</button></div>'
+                        '<div class="wpfe-error-actions">' +
+                        '<button type="button" class="wpfe-close-button button">Close</button>' +
+                        '</div></div>'
                     );
                 }
             }, 15000); // 15 second timeout
@@ -248,10 +262,15 @@ WPFE.ajax = (function($) {
                 }
             };
             
+            console.log('WPFE: Fetching field data for:', fieldName, 'post ID:', postId);
+            
             queueRequest('wpfe_get_fields', {
                 field_names: fieldName,
                 post_id: postId
-            }, wrappedCallback, true);
+            }, function(response) {
+                console.log('WPFE: Field data response received:', response);
+                wrappedCallback(response);
+            }, true);
         },
         
         /**

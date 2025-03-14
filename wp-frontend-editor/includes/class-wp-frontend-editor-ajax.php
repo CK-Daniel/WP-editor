@@ -126,12 +126,18 @@ class WP_Frontend_Editor_AJAX {
             ));
         }
         
+        // Log the requested field before processing
+        error_log('WPFE: get_fields request - post_id: ' . $post_id . ', field: ' . $field_names);
+        
         // Get field data using fields handler
         $result = $this->fields_handler->get_field_data($post_id, $field_names);
         
+        // Log the result for debugging
+        error_log('WPFE: get_fields result - ' . (empty($result) ? 'EMPTY RESULT' : 'Fields found: ' . implode(', ', array_keys($result))));
+        
         // Ensure we have data for the requested field to prevent loading issues
         if (empty($result) || !is_array($result)) {
-            wp_send_json_error(array(
+            $error_data = array(
                 'message' => __('No field data was returned by the server', 'wp-frontend-editor'),
                 'debug_info' => array(
                     'post_id' => $post_id,
@@ -139,7 +145,10 @@ class WP_Frontend_Editor_AJAX {
                     'user_id' => get_current_user_id(),
                     'result' => $result
                 )
-            ));
+            );
+            
+            error_log('WPFE: get_fields error - ' . $error_data['message']);
+            wp_send_json_error($error_data);
         }
         
         // Extra validation for field data

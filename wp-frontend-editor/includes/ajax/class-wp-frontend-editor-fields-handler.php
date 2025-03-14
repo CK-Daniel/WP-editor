@@ -713,8 +713,12 @@ class WP_Frontend_Editor_Fields_Handler {
      * @return array The result with HTML.
      */
     public function get_rendered_field( $field_name, $post_id ) {
+        // Add extra logging
+        error_log('WPFE: get_rendered_field - field: ' . $field_name . ', post_id: ' . $post_id);
+        
         // Validate input parameters
         if ( empty( $field_name ) ) {
+            error_log('WPFE: get_rendered_field error - Field name is required');
             return array(
                 'success' => false,
                 'message' => __( 'Field name is required', 'wp-frontend-editor' ),
@@ -782,11 +786,20 @@ class WP_Frontend_Editor_Fields_Handler {
             }
             
             if ( empty( $field_data ) ) {
+                error_log('WPFE: Field not found: ' . $field_name . ' in post: ' . $post_id);
+                
+                // Create a fallback field data as text to prevent UI from breaking
                 return array(
-                    'success' => false,
-                    'message' => sprintf( __( 'Field "%s" not found', 'wp-frontend-editor' ), esc_html( $field_name ) ),
-                    'error_code' => 'field_not_found',
+                    'success' => true,
+                    'type' => 'text',
+                    'label' => sprintf( __( '%s (Field not found)', 'wp-frontend-editor' ), esc_html( $field_name ) ),
+                    'value' => '',
+                    'source' => 'fallback',
                     'field_name' => $field_name,
+                    'error_code' => 'field_not_found_fallback',
+                    'html' => '<div class="wpfe-field-not-found">' . 
+                            sprintf( __( 'Field "%s" was not found. Try refreshing the page.', 'wp-frontend-editor' ), esc_html( $field_name ) ) . 
+                            '</div>'
                 );
             }
         } catch ( Exception $e ) {
