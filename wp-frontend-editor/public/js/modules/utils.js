@@ -196,6 +196,17 @@ WPFE.utils = (function($) {
         },
         
         /**
+         * Escape HTML special characters in a string
+         * Alias for sanitizeString for better readability
+         * 
+         * @param {string} str The string to escape
+         * @return {string} Escaped string
+         */
+        escapeHTML: function(str) {
+            return this.sanitizeString(str);
+        },
+        
+        /**
          * Convert HTML entities to characters
          * 
          * @param {string} str The string with HTML entities

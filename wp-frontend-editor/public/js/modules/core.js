@@ -49,45 +49,82 @@ WPFE.core = (function($) {
                 // Load templates
                 this.loadTemplates();
                 
-                // Initialize modules with error handling
+                // Initialize modules in proper dependency order with event-based communication
+                var moduleInitStatus = {
+                    utils: true, // Already loaded
+                    core: true,  // We're in core init
+                    events: false,
+                    elements: false,
+                    fields: false,
+                    acf: false,
+                    mobile: false
+                };
+                
+                // Track module initialization status
+                function markModuleInitialized(moduleName) {
+                    moduleInitStatus[moduleName] = true;
+                    $(document).trigger('wpfe:module_initialized', [moduleName]);
+                    
+                    if (wpfe_data.debug_mode) {
+                        console.log('WP Frontend Editor: Module initialized:', moduleName);
+                    }
+                }
+                
+                // Initialize events module first (required for all interaction)
                 try {
                     WPFE.events.init();
+                    markModuleInitialized('events');
                 } catch (e) {
                     console.error('WP Frontend Editor: Error initializing events module:', e);
                 }
                 
-                try {
-                    WPFE.elements.init();
-                } catch (e) {
-                    console.error('WP Frontend Editor: Error initializing elements module:', e);
-                }
-                
-                if (typeof WPFE.acf !== 'undefined') {
-                    try {
-                        WPFE.acf.init();
-                    } catch (e) {
-                        console.error('WP Frontend Editor: Error initializing ACF module:', e);
+                // Wait for events module before initializing elements
+                $(document).one('wpfe:module_initialized', function(event, module) {
+                    if (module === 'events') {
+                        try {
+                            WPFE.elements.init();
+                            markModuleInitialized('elements');
+                        } catch (e) {
+                            console.error('WP Frontend Editor: Error initializing elements module:', e);
+                        }
                     }
-                } else {
-                    console.log('WP Frontend Editor: ACF module not available or not loaded.');
-                }
+                });
                 
-                if (typeof WPFE.mobile !== 'undefined') {
-                    try {
-                        WPFE.mobile.init();
-                    } catch (e) {
-                        console.error('WP Frontend Editor: Error initializing mobile module:', e);
+                // Initialize optional modules after elements
+                $(document).one('wpfe:module_initialized', function(event, module) {
+                    if (module === 'elements') {
+                        // Initialize ACF module if available
+                        if (typeof WPFE.acf !== 'undefined') {
+                            try {
+                                WPFE.acf.init();
+                                markModuleInitialized('acf');
+                            } catch (e) {
+                                console.error('WP Frontend Editor: Error initializing ACF module:', e);
+                            }
+                        } else if (wpfe_data.debug_mode) {
+                            console.log('WP Frontend Editor: ACF module not available or not loaded.');
+                        }
+                        
+                        // Initialize mobile module if available
+                        if (typeof WPFE.mobile !== 'undefined') {
+                            try {
+                                WPFE.mobile.init();
+                                markModuleInitialized('mobile');
+                            } catch (e) {
+                                console.error('WP Frontend Editor: Error initializing mobile module:', e);
+                            }
+                        }
                     }
-                }
+                });
                 
-                // Add highlight class if enabled in settings
+                // Add highlight and debug classes only if enabled in settings
                 if (wpfe_data.highlight_editable) {
                     $('body').addClass('wpfe-highlight-editable');
                 }
                 
-                // Force editable elements to be visible for debugging
-                $('body').addClass('wpfe-debug-mode');
-                $('body').addClass('wpfe-highlight-editable');
+                if (wpfe_data.debug_mode) {
+                    $('body').addClass('wpfe-debug-mode');
+                }
                 
                 // Detect mobile device for better button visibility
                 if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {

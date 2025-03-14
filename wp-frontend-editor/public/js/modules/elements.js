@@ -443,8 +443,15 @@ WPFE.elements = (function($) {
                 }
                 
                 // If no elements found with primary selector, try content-based identification
-                if (foundElements.length === 0 && pageContent[field.name]) {
-                    identifyElementsByContent(field.name, pageContent[field.name], field.contentType);
+                if (foundElements.length === 0 && pageContent && pageContent[field.name]) {
+                    try {
+                        var contentMatchedElements = identifyElementsByContent(field.name, pageContent[field.name], field.contentType);
+                        if (wpfe_data.debug_mode && contentMatchedElements && contentMatchedElements.length) {
+                            console.log('Identified ' + contentMatchedElements.length + ' elements for ' + field.name + ' using content matching');
+                        }
+                    } catch (e) {
+                        console.error('Error while identifying elements by content for ' + field.name + ':', e);
+                    }
                 }
             });
             
@@ -467,30 +474,64 @@ WPFE.elements = (function($) {
             // Cache all edit buttons after initialization
             WPFE.core.setEditButtons($('.wpfe-edit-button'));
             
-            // Add MutationObserver to watch for dynamic content changes
+            // Add MutationObserver to watch for dynamic content changes more efficiently
             if (window.MutationObserver) {
+                // Use a more optimized approach with debouncing
+                var refreshDebounceTimer = null;
+                var pendingMutations = [];
+                
                 var observer = new MutationObserver(function(mutations) {
-                    var contentChanged = false;
+                    // Store mutations for processing
+                    pendingMutations = pendingMutations.concat(mutations);
                     
-                    // Check if the mutations involved adding nodes
-                    mutations.forEach(function(mutation) {
-                        if (mutation.addedNodes.length) {
-                            contentChanged = true;
-                        }
-                    });
-                    
-                    // Only refresh if content was actually added
-                    if (contentChanged) {
-                        // Small delay to allow DOM to settle
-                        setTimeout(function() {
-                            // Refresh editable elements
-                            WPFE.elements.refreshElements();
-                        }, 500);
+                    // Clear existing timer if there is one
+                    if (refreshDebounceTimer) {
+                        clearTimeout(refreshDebounceTimer);
                     }
+                    
+                    // Set new timer with a shorter delay (250ms instead of 500ms)
+                    refreshDebounceTimer = setTimeout(function() {
+                        // Process accumulated mutations
+                        var contentChanged = false;
+                        var editableElementsAffected = false;
+                        
+                        // Analyze mutations for relevant changes
+                        pendingMutations.forEach(function(mutation) {
+                            // Check for added nodes
+                            if (mutation.addedNodes.length) {
+                                contentChanged = true;
+                                
+                                // Check if added nodes might contain editable content
+                                for (var i = 0; i < mutation.addedNodes.length; i++) {
+                                    var node = mutation.addedNodes[i];
+                                    if (node.nodeType === 1) { // Element node
+                                        if ($(node).is(coreFields.map(function(f) { return f.selector; }).join(','))) {
+                                            editableElementsAffected = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        
+                        // Only refresh if content was actually added and might contain editable elements
+                        if (contentChanged && editableElementsAffected) {
+                            WPFE.elements.refreshElements();
+                            if (wpfe_data.debug_mode) {
+                                console.log('DOM changed - refreshing editable elements');
+                            }
+                        }
+                        
+                        // Reset pending mutations
+                        pendingMutations = [];
+                    }, 250);
                 });
                 
-                // Start observing the document body for content changes
-                observer.observe(document.body, {
+                // Start observing the main content area if possible
+                var $mainContent = $('.content, .site-content, main, #content, #main, .entry-content').first();
+                var targetNode = $mainContent.length ? $mainContent[0] : document.body;
+                
+                observer.observe(targetNode, {
                     childList: true,
                     subtree: true,
                     attributes: false,

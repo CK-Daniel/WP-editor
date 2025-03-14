@@ -20,9 +20,6 @@ jQuery(document).ready(function($) {
     // Initialize core module
     WPFE.core.init();
     
-    // Enable debug mode always temporarily
-    wpfe_data.debug_mode = true;
-    
     // Initialize native fields module if available
     if (typeof WPFE.nativeFields !== 'undefined') {
         WPFE.nativeFields.init();

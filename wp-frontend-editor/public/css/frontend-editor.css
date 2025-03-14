@@ -127,15 +127,38 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    opacity: 1; /* CHANGED: Always visible for debugging */
+    opacity: 0; /* Reset to hidden by default, visible on hover */
     pointer-events: auto !important; /* Ensure buttons are clickable */
     transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease !important;
     min-width: 36px !important;
     min-height: 36px !important;
     text-transform: none !important;
-    transform: scale(1) translateY(0); /* CHANGED: No initial transform */
+    transform: scale(0.9) translateY(5px); /* Initial transform */
     animation: none !important; /* Prevent theme animations from affecting our button */
-    visibility: visible !important; /* CHANGED: Always visible */
+    visibility: hidden; /* Hidden by default, visible on hover */
+}
+
+/* Button visible on hover and when debug mode is active */
+.wpfe-debug-mode .wpfe-edit-button,
+.wpfe-editable:hover .wpfe-edit-button,
+.wpfe-edit-button:hover {
+    opacity: 1 !important;
+    transform: scale(1) translateY(0) !important;
+    visibility: visible !important;
+}
+
+/* Feedback when button is clicked */
+.wpfe-edit-button.wpfe-button-clicked {
+    transform: scale(0.95) !important;
+    background-color: var(--wpfe-primary-dark) !important;
+    box-shadow: 0 1px 3px var(--wpfe-shadow) !important;
+}
+
+/* Feedback when editable element is clicked */
+.wpfe-element-clicked {
+    background-color: rgba(56, 88, 233, 0.15) !important;
+    outline: 2px solid var(--wpfe-primary) !important;
+    transition: background-color 0.2s ease, outline 0.2s ease !important;
 }
 
 /* Button positioning - more visible positions */

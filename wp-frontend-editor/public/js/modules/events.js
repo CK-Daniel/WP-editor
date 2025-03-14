@@ -32,28 +32,150 @@ WPFE.events = (function($) {
      * @param {number} postId The post ID.
      */
     function openEditor(fieldName, postId) {
-        // Check if editor is already open
-        if (WPFE.core.isEditingActive()) {
+        try {
+            // Input validation
+            if (!fieldName) {
+                console.error('Cannot open editor: No field name provided');
+                return false;
+            }
+            
+            if (!postId && !(postId = wpfe_data.post_id)) {
+                console.error('Cannot open editor: No post ID provided or found in wpfe_data');
+                return false;
+            }
+            
+            // Check if editor is already open
+            if (WPFE.core.isEditingActive()) {
+                if (wpfe_data.debug_mode) {
+                    console.log('Editor is already active, not opening another instance');
+                }
+                return false;
+            }
+            
+            // Get sidebar and overlay elements
+            var sidebar = WPFE.core.getSidebar();
+            var overlay = WPFE.core.getOverlay();
+            
+            // Verify required elements exist
+            if (!sidebar || !sidebar.length) {
+                console.error('Cannot open editor: Sidebar element not found');
+                return false;
+            }
+            
+            if (!overlay || !overlay.length) {
+                console.error('Cannot open editor: Overlay element not found');
+                return false;
+            }
+            
+            // Update state
+            WPFE.core.setEditingState(true);
+            WPFE.core.setActiveField(fieldName);
+            WPFE.core.setActivePostId(postId);
+            
+            // Show overlay with graceful fallback if animation fails
+            try {
+                overlay.fadeIn(200, function() {
+                    overlayActive = true;
+                });
+            } catch (e) {
+                overlay.show();
+                overlayActive = true;
+                console.warn('Overlay animation failed, using direct show() method');
+            }
+            
+            // Add active class to body
+            $('body').addClass('wpfe-editor-active');
+            
+            // Adjust sidebar position responsively
+            adjustSidebarForScreenSize(sidebar);
+            
+            // Show the sidebar with animation and fallback
+            try {
+                sidebar.addClass('wpfe-sidebar-active').css('display', 'flex');
+            } catch (e) {
+                sidebar.addClass('wpfe-sidebar-active').show();
+                console.warn('Sidebar animation failed, using direct show() method');
+            }
+            
+            // Set sidebar title with safe text handling
+            var safeFieldName = WPFE.utils.escapeHTML(fieldName);
+            sidebar.find('.wpfe-sidebar-title').text(
+                WPFE.utils.formatString(wpfe_data.i18n.editing_field || 'Editing: {0}', safeFieldName)
+            );
+            
+            // Show loading state
+            sidebar.find('.wpfe-sidebar-content').html(
+                '<div class="wpfe-loading"><span class="dashicons dashicons-update-alt"></span> ' + 
+                (wpfe_data.i18n.loading || 'Loading...') + '</div>'
+            );
+            
+            // Fetch field data with error handling
+            WPFE.ajax.fetchField(fieldName, postId, function(response) {
+                try {
+                    // Handle unsuccessful response
+                    if (!response.success) {
+                        var errorMessage = response.data && response.data.message ? 
+                            response.data.message : 'Unknown error loading field';
+                        
+                        sidebar.find('.wpfe-sidebar-content').html(
+                            '<div class="wpfe-error"><p>' + errorMessage + '</p>' +
+                            '<button type="button" class="wpfe-close-button button">' + 
+                            (wpfe_data.i18n.close || 'Close') + '</button></div>'
+                        );
+                        console.error('Error loading field:', errorMessage);
+                        return;
+                    }
+                    
+                    // Store original values for tracking changes
+                    if (response.data) {
+                        WPFE.core.setOriginalValue(fieldName, response.data.value);
+                    }
+                    
+                    // Render field in the sidebar
+                    WPFE.fields.renderField(fieldName, response);
+                    
+                    // Initialize field-specific handlers
+                    WPFE.fields.initFieldHandlers(fieldName, response);
+                    
+                    // Focus the first input
+                    setTimeout(function() {
+                        sidebar.find('input:visible, textarea:visible').first().focus();
+                    }, 100);
+                    
+                    // Add active class to the element being edited
+                    var $editableElement = $('[data-wpfe-field="' + fieldName + '"][data-wpfe-post-id="' + postId + '"]');
+                    if ($editableElement.length) {
+                        $editableElement.addClass('wpfe-currently-editing');
+                    }
+                    
+                    // Track this edit in history
+                    trackFieldEdit(fieldName, postId);
+                } catch (err) {
+                    console.error('Error processing field data:', err);
+                    sidebar.find('.wpfe-sidebar-content').html(
+                        '<div class="wpfe-error"><p>Error rendering field editor</p>' +
+                        '<button type="button" class="wpfe-close-button button">' + 
+                        (wpfe_data.i18n.close || 'Close') + '</button></div>'
+                    );
+                }
+            });
+            
+            return true;
+        } catch (err) {
+            console.error('Critical error opening editor:', err);
+            // Try to clean up state
+            WPFE.core.setEditingState(false);
+            $('body').removeClass('wpfe-editor-active');
+            $('.wpfe-currently-editing').removeClass('wpfe-currently-editing');
             return false;
         }
-        
-        // Update state
-        WPFE.core.setEditingState(true);
-        WPFE.core.setActiveField(fieldName);
-        WPFE.core.setActivePostId(postId);
-        
-        // Get sidebar and overlay elements
-        var sidebar = WPFE.core.getSidebar();
-        var overlay = WPFE.core.getOverlay();
-        
-        // Show overlay
-        overlay.fadeIn(200);
-        overlayActive = true;
-        
-        // Add active class to body
-        $('body').addClass('wpfe-editor-active');
-        
-        // Adjust sidebar position for mobile
+    }
+    
+    /**
+     * Adjust sidebar position based on screen size
+     * @param {jQuery} sidebar The sidebar element
+     */
+    function adjustSidebarForScreenSize(sidebar) {
         if ($(window).width() < 768) {
             sidebar.css({
                 'bottom': '0',
@@ -62,44 +184,24 @@ WPFE.events = (function($) {
                 'height': '80%',
                 'width': '100%'
             });
-        }
-        
-        // Show the sidebar with animation
-        sidebar.addClass('wpfe-sidebar-active').css('display', 'flex');
-        
-        // Set sidebar title
-        sidebar.find('.wpfe-sidebar-title').text(WPFE.utils.formatString(wpfe_data.i18n.editing_field || 'Editing: {0}', fieldName));
-        
-        // Show loading state
-        sidebar.find('.wpfe-sidebar-content').html('<div class="wpfe-loading"><span class="dashicons dashicons-update-alt"></span> ' + (wpfe_data.i18n.loading || 'Loading...') + '</div>');
-        
-        // Fetch field data
-        WPFE.ajax.fetchField(fieldName, postId, function(response) {
-            // Store original values for tracking changes
-            if (response.success && response.data) {
-                WPFE.core.setOriginalValue(fieldName, response.data.value);
+        } else {
+            // For larger screens, use default positioning or adjust based on screen size
+            var screenWidth = $(window).width();
+            var sidebarWidth = parseInt(wpfe_data.sidebar_width) || 400;
+            
+            // For medium screens, make sidebar narrower
+            if (screenWidth < 1200 && screenWidth >= 768) {
+                sidebarWidth = Math.min(sidebarWidth, Math.floor(screenWidth * 0.4));
             }
             
-            // Render field in the sidebar
-            WPFE.fields.renderField(fieldName, response);
-            
-            // Initialize field-specific handlers
-            WPFE.fields.initFieldHandlers(fieldName, response);
-            
-            // Focus the first input
-            setTimeout(function() {
-                sidebar.find('input:visible, textarea:visible').first().focus();
-            }, 100);
-            
-            // Add active class to the element being edited
-            var $editableElement = $('[data-wpfe-field="' + fieldName + '"][data-wpfe-post-id="' + postId + '"]');
-            $editableElement.addClass('wpfe-currently-editing');
-            
-            // Track this edit in history
-            trackFieldEdit(fieldName, postId);
-        });
-        
-        return true;
+            sidebar.css({
+                'top': '',
+                'right': '',
+                'bottom': '',
+                'height': '',
+                'width': sidebarWidth + 'px'
+            });
+        }
     }
 
     /**
@@ -242,47 +344,92 @@ WPFE.events = (function($) {
             // Debug log for events initialization
             console.log('WPFE Events initializing... Found ' + $('.wpfe-edit-button').length + ' edit buttons.');
             
-            // Add click handlers with more debug info
+            // Add click handlers with improved error handling and user feedback
             $(document).off('click', '.wpfe-edit-button').on('click', '.wpfe-edit-button', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                var $button = $(this);
-                var fieldName = $button.data('wpfe-field');
-                var postId = $button.data('wpfe-post-id');
-                
-                console.log('Edit button clicked: ', fieldName, postId);
-                
-                // Highlight the editable element
-                $('.wpfe-editable').removeClass('wpfe-currently-editing');
-                var $editableElement = $('[data-wpfe-field="' + fieldName + '"][data-wpfe-post-id="' + postId + '"]');
-                if ($editableElement.length) {
-                    $editableElement.addClass('wpfe-currently-editing');
-                    console.log('Found editable element for: ', fieldName);
-                } else {
-                    console.warn('No editable element found for: ', fieldName);
+                try {
+                    var $button = $(this);
+                    var fieldName = $button.data('wpfe-field');
+                    var postId = $button.data('wpfe-post-id');
+                    
+                    if (!fieldName) {
+                        if (wpfe_data.debug_mode) {
+                            console.error('Edit button clicked but no field name found');
+                        }
+                        return;
+                    }
+                    
+                    if (wpfe_data.debug_mode) {
+                        console.log('Edit button clicked: ', fieldName, postId);
+                    }
+                    
+                    // Highlight the editable element
+                    $('.wpfe-editable').removeClass('wpfe-currently-editing');
+                    var $editableElement = $('[data-wpfe-field="' + fieldName + '"][data-wpfe-post-id="' + postId + '"]');
+                    
+                    if ($editableElement.length) {
+                        $editableElement.addClass('wpfe-currently-editing');
+                        
+                        // Add visual feedback that the button was clicked
+                        $button.addClass('wpfe-button-clicked');
+                        setTimeout(function() {
+                            $button.removeClass('wpfe-button-clicked');
+                        }, 300);
+                        
+                        if (wpfe_data.debug_mode) {
+                            console.log('Found editable element for: ', fieldName);
+                        }
+                    } else {
+                        console.warn('No editable element found for: ', fieldName);
+                        return; // Don't proceed if element not found
+                    }
+                    
+                    // Open the editor with error handling
+                    var result = openEditor(fieldName, postId);
+                    
+                    if (wpfe_data.debug_mode) {
+                        console.log('Editor opened: ', result);
+                    }
+                } catch (err) {
+                    console.error('Error handling edit button click:', err);
                 }
-                
-                // Open the editor
-                var result = openEditor(fieldName, postId);
-                console.log('Editor opened: ', result);
             });
             
-            // Also add a direct handler to editable elements
+            // Also add a direct handler to editable elements with improved interaction
             $(document).off('click', '.wpfe-editable').on('click', '.wpfe-editable', function(e) {
-                // Skip if we clicked on the button itself
-                if ($(e.target).closest('.wpfe-edit-button').length) {
-                    return;
-                }
-                
-                // Open editor for this element
-                var $editable = $(this);
-                var fieldName = $editable.data('wpfe-field');
-                var postId = $editable.data('wpfe-post-id');
-                
-                if (fieldName && postId) {
-                    console.log('Editable element clicked: ', fieldName, postId);
-                    openEditor(fieldName, postId);
+                try {
+                    // Skip if we clicked on the button itself or any interactive element
+                    if ($(e.target).closest('.wpfe-edit-button, a, button, input, select, textarea').length) {
+                        return;
+                    }
+                    
+                    // Skip if we're in a content editable area
+                    if ($(e.target).closest('[contenteditable="true"]').length) {
+                        return;
+                    }
+                    
+                    // Open editor for this element
+                    var $editable = $(this);
+                    var fieldName = $editable.data('wpfe-field');
+                    var postId = $editable.data('wpfe-post-id');
+                    
+                    if (fieldName && postId) {
+                        // Add visual feedback
+                        $editable.addClass('wpfe-element-clicked');
+                        setTimeout(function() {
+                            $editable.removeClass('wpfe-element-clicked');
+                        }, 300);
+                        
+                        if (wpfe_data.debug_mode) {
+                            console.log('Editable element clicked: ', fieldName, postId);
+                        }
+                        
+                        openEditor(fieldName, postId);
+                    }
+                } catch (err) {
+                    console.error('Error handling editable element click:', err);
                 }
             });
             
