@@ -140,13 +140,24 @@ class WP_Frontend_Editor {
     public function enqueue_scripts() {
         // Only enqueue for logged-in users with edit capabilities
         if ( ! $this->current_user_can_edit() ) {
+            if ( defined('WP_DEBUG') && WP_DEBUG ) {
+                error_log('WP Frontend Editor: User does not have edit capabilities');
+            }
             return;
         }
 
         // Check if this post type is enabled
         $post_type = get_post_type();
-        if ( $post_type && ! in_array( $post_type, $this->options['post_types'], true ) ) {
+        if ( $post_type && ! empty( $this->options['post_types'] ) && ! in_array( $post_type, $this->options['post_types'], true ) ) {
+            if ( defined('WP_DEBUG') && WP_DEBUG ) {
+                error_log('WP Frontend Editor: Post type ' . $post_type . ' is not enabled in settings.');
+            }
             return;
+        }
+        
+        // Debug info for script loading
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            error_log('WP Frontend Editor: Loading scripts for post type ' . $post_type);
         }
 
         // Enqueue the dashicons
@@ -251,29 +262,41 @@ class WP_Frontend_Editor {
             }
         }
         
-        // Pass data to JavaScript
-        wp_localize_script(
-            'wp-frontend-editor',
-            'wpfe_data',
-            array(
-                'ajax_url'          => admin_url( 'admin-ajax.php' ),
-                'rest_api_url'      => rest_url( 'wp-frontend-editor/v1' ),
-                'nonce'             => wp_create_nonce( 'wpfe-editor-nonce' ),
-                'rest_nonce'        => wp_create_nonce( 'wp_rest' ),
-                'post_id'           => $post_id,
-                'is_acf_active'     => $this->is_acf_active(),
-                'enable_inline'     => isset( $this->options['enable_inline'] ) ? (bool) $this->options['enable_inline'] : true,
-                'button_position'   => isset( $this->options['button_position'] ) ? $this->options['button_position'] : 'top-right',
-                'button_style'      => isset( $this->options['button_style'] ) ? $this->options['button_style'] : 'icon-only',
-                'sidebar_width'     => isset( $this->options['sidebar_width'] ) ? $this->options['sidebar_width'] : 350,
-                'highlight_editable' => isset( $this->options['highlight_editable'] ) ? (bool) $this->options['highlight_editable'] : false,
-                'debug_mode'        => isset( $this->options['debug_mode'] ) ? (bool) $this->options['debug_mode'] : false,
-                'auto_save_inline'  => isset( $this->options['auto_save_inline'] ) ? (bool) $this->options['auto_save_inline'] : false,
-                'live_preview'      => isset( $this->options['live_preview'] ) ? (bool) $this->options['live_preview'] : true,
-                'show_toolbar'      => isset( $this->options['show_toolbar'] ) ? (bool) $this->options['show_toolbar'] : false,
-                'discover_fields'   => isset( $this->options['discover_fields'] ) ? (bool) $this->options['discover_fields'] : true,
-                'page_content'      => $page_content,
-                'i18n'              => array(
+        // Pass data to JavaScript with debugging info
+        $script_data = array(
+            'ajax_url'          => admin_url( 'admin-ajax.php' ),
+            'rest_api_url'      => rest_url( 'wp-frontend-editor/v1' ),
+            'nonce'             => wp_create_nonce( 'wpfe-editor-nonce' ),
+            'rest_nonce'        => wp_create_nonce( 'wp_rest' ),
+            'post_id'           => $post_id,
+            'plugin_url'        => WPFE_PLUGIN_URL,
+            'version'           => WPFE_VERSION,
+            'plugin_name'       => 'WP Frontend Editor',
+            'is_acf_active'     => $this->is_acf_active(),
+            'enable_inline'     => isset( $this->options['enable_inline'] ) ? (bool) $this->options['enable_inline'] : true,
+            'button_position'   => isset( $this->options['button_position'] ) ? $this->options['button_position'] : 'top-right',
+            'button_style'      => isset( $this->options['button_style'] ) ? $this->options['button_style'] : 'icon-only',
+            'sidebar_width'     => isset( $this->options['sidebar_width'] ) ? $this->options['sidebar_width'] : 350,
+            'highlight_editable' => isset( $this->options['highlight_editable'] ) ? (bool) $this->options['highlight_editable'] : false,
+            // Force debug mode temporarily to troubleshoot script loading issues
+            'debug_mode'        => true, // isset( $this->options['debug_mode'] ) ? (bool) $this->options['debug_mode'] : false,
+            'auto_save_inline'  => isset( $this->options['auto_save_inline'] ) ? (bool) $this->options['auto_save_inline'] : false,
+            'live_preview'      => isset( $this->options['live_preview'] ) ? (bool) $this->options['live_preview'] : true,
+            'show_toolbar'      => isset( $this->options['show_toolbar'] ) ? (bool) $this->options['show_toolbar'] : false,
+            'discover_fields'   => isset( $this->options['discover_fields'] ) ? (bool) $this->options['discover_fields'] : true,
+            'page_content'      => $page_content,
+            'current_user_can_edit' => $this->current_user_can_edit($post_id),
+            'debugging_info'    => array(
+                'wp_version'    => get_bloginfo('version'),
+                'php_version'   => phpversion(),
+                'theme'         => get_template(),
+                'is_singular'   => is_singular(),
+                'post_type'     => $post_type,
+                'is_admin'      => is_admin(),
+                'is_frontend'   => !is_admin(),
+                'is_logged_in'  => is_user_logged_in()
+            ),
+            'i18n'              => array(
                     'edit'            => __( 'Edit', 'wp-frontend-editor' ),
                     'save'            => __( 'Save', 'wp-frontend-editor' ),
                     'saved'           => __( 'Saved!', 'wp-frontend-editor' ),
@@ -290,6 +313,11 @@ class WP_Frontend_Editor {
                 ),
             )
         );
+        
+        // Log script localization to debug log
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            error_log('WP Frontend Editor: Localized script data for post ' . $post_id . ' with debug mode enabled');
+        }
     }
 
     /**
@@ -305,8 +333,16 @@ class WP_Frontend_Editor {
 
         // Check if this post type is enabled
         $post_type = get_post_type();
-        if ( $post_type && ! in_array( $post_type, $this->options['post_types'], true ) ) {
+        if ( $post_type && ! empty( $this->options['post_types'] ) && ! in_array( $post_type, $this->options['post_types'], true ) ) {
+            if ( defined('WP_DEBUG') && WP_DEBUG ) {
+                error_log('WP Frontend Editor: Not adding editor container - Post type ' . $post_type . ' is not enabled in settings.');
+            }
             return;
+        }
+        
+        // Debug info for editor container
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            error_log('WP Frontend Editor: Adding editor container for post type ' . $post_type);
         }
         
         // Include the editor sidebar template

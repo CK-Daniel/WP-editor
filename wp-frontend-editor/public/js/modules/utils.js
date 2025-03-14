@@ -7,6 +7,12 @@ var WPFE = WPFE || {};
 
 WPFE.utils = (function($) {
     'use strict';
+    
+    // Mark this module as loaded
+    WPFE.modulesReady.utils = true;
+    if (WPFE.debug && WPFE.debug.modulesLoaded) {
+        WPFE.debug.modulesLoaded.push('utils');
+    }
 
     return {
         /**

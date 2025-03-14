@@ -7,6 +7,12 @@ var WPFE = WPFE || {};
 
 WPFE.core = (function($) {
     'use strict';
+    
+    // Mark this module as loaded
+    WPFE.modulesReady.core = true;
+    if (WPFE.debug && WPFE.debug.modulesLoaded) {
+        WPFE.debug.modulesLoaded.push('core');
+    }
 
     // Private variables
     var sidebar = null;

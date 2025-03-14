@@ -9,12 +9,47 @@ var WPFE = WPFE || {};
 jQuery(document).ready(function($) {
     'use strict';
     
-    // Initialize all modules with debug output
-    console.log('WP Frontend Editor initializing...');
+    // Mark this module as loaded
+    WPFE.modulesReady.main = true;
+    if (WPFE.debug && WPFE.debug.modulesLoaded) {
+        WPFE.debug.modulesLoaded.push('main');
+    }
+    
+    // Initialize with more robust debugging
+    console.log('[WPFE] Main module initializing...');
     
     if (typeof wpfe_data === 'undefined') {
-        console.error('wpfe_data is not defined! Plugin data not properly loaded.');
+        console.error('[WPFE] CRITICAL ERROR: wpfe_data is not defined! Plugin data not properly loaded.');
+        
+        // Check if jQuery is properly loaded
+        if (typeof jQuery !== 'undefined') {
+            console.log('[WPFE] jQuery is loaded (version: ' + jQuery.fn.jquery + ')');
+        } else {
+            console.error('[WPFE] jQuery is not loaded!');
+        }
+        
+        // Check if wp-util is available
+        if (typeof wp !== 'undefined' && typeof wp.template !== 'undefined') {
+            console.log('[WPFE] wp-util is loaded');
+        } else {
+            console.error('[WPFE] wp-util is not loaded!');
+        }
+        
         return;
+    }
+    
+    // Check if all required modules are loaded
+    var missingModules = [];
+    for (var module in WPFE.modulesReady) {
+        if (!WPFE.modulesReady[module] && module !== 'main') {
+            missingModules.push(module);
+        }
+    }
+    
+    if (missingModules.length > 0) {
+        console.warn('[WPFE] Warning: Some modules are not loaded: ' + missingModules.join(', '));
+    } else {
+        console.log('[WPFE] All modules successfully loaded');
     }
     
     // Initialize core module
