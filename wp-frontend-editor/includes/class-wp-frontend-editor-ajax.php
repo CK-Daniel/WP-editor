@@ -94,6 +94,9 @@ class WP_Frontend_Editor_AJAX {
         add_action('wp_ajax_wpfe_get_image_data', array($this, 'get_image_data'));
         add_action('wp_ajax_wpfe_get_gallery_data', array($this, 'get_gallery_data'));
         add_action('wp_ajax_wpfe_get_rendered_field', array($this, 'get_rendered_field'));
+        
+        // Log AJAX handler initialization
+        wpfe_log( 'AJAX Handler initialized', 'debug' );
     }
 
     /**
@@ -144,12 +147,14 @@ class WP_Frontend_Editor_AJAX {
         $fields = isset($_POST['fields']) ? $_POST['fields'] : array();
         
         if (!$post_id) {
+            wpfe_log( 'Invalid post ID in save_fields', 'error', array( 'post_id' => $post_id ) );
             wp_send_json_error(array(
                 'message' => __('Invalid post ID', 'wp-frontend-editor'),
             ));
         }
         
         if (empty($fields)) {
+            wpfe_log( 'No fields to save', 'warning', array( 'post_id' => $post_id ) );
             wp_send_json_error(array(
                 'message' => __('No fields to save', 'wp-frontend-editor'),
             ));
@@ -157,10 +162,22 @@ class WP_Frontend_Editor_AJAX {
         
         // Check if user can edit this post
         if (!current_user_can('edit_post', $post_id)) {
+            $current_user_id = get_current_user_id();
+            wpfe_log( 'Permission denied for editing post', 'error', array( 
+                'post_id' => $post_id,
+                'user_id' => $current_user_id
+            ));
             wp_send_json_error(array(
                 'message' => __('You do not have permission to edit this post', 'wp-frontend-editor'),
             ));
         }
+        
+        // Log fields being saved
+        wpfe_log( 'Saving fields for post', 'info', array(
+            'post_id' => $post_id,
+            'field_count' => count($fields),
+            'field_names' => array_keys($fields)
+        ));
         
         // Process form submission
         $result = $this->form_handler->process_form_submission(array(
@@ -169,11 +186,23 @@ class WP_Frontend_Editor_AJAX {
         ), $post_id);
         
         if (is_wp_error($result)) {
+            wpfe_log( 'Error saving fields', 'error', array(
+                'post_id' => $post_id,
+                'error' => $result->get_error_message(),
+                'error_data' => $result->get_error_data()
+            ));
             wp_send_json_error(array(
                 'message' => $result->get_error_message(),
                 'errors' => $result->get_error_data()
             ));
         }
+        
+        // Log successful save
+        wpfe_log( 'Fields saved successfully', 'success', array(
+            'post_id' => $post_id,
+            'post_title' => get_the_title($post_id),
+            'updated_fields' => isset($result['updated_fields']) ? $result['updated_fields'] : []
+        ));
         
         wp_send_json_success($result);
     }
@@ -259,11 +288,18 @@ class WP_Frontend_Editor_AJAX {
      * @since 1.0.0
      * @updated 1.0.1 Added support for all ACF field types
      * @updated 1.0.2 Refactored to use field renderer class
+     * @updated 1.0.3.7 Updated to use the native field editor interface
      * @return void
      */
     public function get_rendered_field() {
-        // Check nonce - use wp_die to immediately terminate on failure
-        check_ajax_referer('wpfe-editor-nonce', 'nonce', true);
+        // Check nonce with multiple parameter names for backward compatibility
+        if (isset($_REQUEST['nonce'])) {
+            check_ajax_referer('wpfe-editor-nonce', 'nonce', true);
+        } elseif (isset($_REQUEST['security'])) {
+            check_ajax_referer('wpfe-editor-nonce', 'security', true);
+        } else {
+            check_ajax_referer('wpfe-editor-nonce', '_wpnonce', true);
+        }
         
         // Get parameters
         $post_id = isset($_GET['post_id']) ? intval($_GET['post_id']) : 0;
@@ -282,124 +318,15 @@ class WP_Frontend_Editor_AJAX {
             ));
         }
         
-        // Buffer the output
-        ob_start();
+        // Use the fields handler to get the rendered field
+        $result = $this->fields_handler->get_rendered_field($field_name, $post_id);
         
-        if (function_exists('get_field') && function_exists('get_field_object')) {
-            // For ACF fields
-            $field_object = get_field_object($field_name, $post_id);
-            
-            if ($field_object) {
-                $value = get_field($field_name, $post_id);
-                
-                // Add wrapper div with field type class
-                echo '<div class="wpfe-field wpfe-field-type-' . esc_attr($field_object['type']) . '">';
-                
-                // Handle different field types using our specialized field renderer class
-                switch ($field_object['type']) {
-                    case 'repeater':
-                        echo $this->field_renderer->render_acf_repeater($field_name, $post_id, $field_object);
-                        break;
-                        
-                    case 'flexible_content':
-                        echo $this->field_renderer->render_acf_flexible_content($field_name, $post_id, $field_object);
-                        break;
-                        
-                    case 'group':
-                        echo $this->field_renderer->render_acf_group($field_name, $post_id, $field_object, $value);
-                        break;
-                        
-                    case 'clone':
-                        // Clone fields are complex - they inherit properties from the cloned field
-                        echo '<div class="acf-clone-field acf-clone-' . esc_attr($field_name) . '">';
-                        
-                        // If we have prefixed subfields, render each one
-                        if (isset($field_object['sub_fields']) && is_array($field_object['sub_fields'])) {
-                            foreach ($field_object['sub_fields'] as $sub_field) {
-                                $sub_value = get_field($sub_field['name'], $post_id);
-                                
-                                echo '<div class="acf-field acf-field-' . esc_attr($sub_field['name']) . ' acf-field-type-' . esc_attr($sub_field['type']) . '">';
-                                echo '<div class="acf-field-label">' . esc_html($sub_field['label']) . '</div>';
-                                
-                                echo '<div class="acf-field-value-wrap">';
-                                // Use field renderer to handle value formatting
-                                echo $this->field_renderer->render_field_value($sub_value, $sub_field);
-                                echo '</div>';
-                                
-                                echo '</div>';
-                            }
-                        } else {
-                            // For clone fields without explicit subfields, just render the value we have
-                            echo $this->field_renderer->render_field_value($value, $field_object);
-                        }
-                        
-                        echo '</div>';
-                        break;
-                        
-                    case 'tab':
-                    case 'message':
-                    case 'accordion':
-                        // These are UI-only fields with no actual values
-                        echo '<div class="acf-ui-field acf-ui-' . esc_attr($field_object['type']) . '">';
-                        
-                        if ($field_object['type'] === 'message' && !empty($field_object['message'])) {
-                            echo '<div class="acf-message">' . wp_kses_post($field_object['message']) . '</div>';
-                        } else {
-                            echo '<div class="acf-ui-label">' . esc_html($field_object['label']) . '</div>';
-                        }
-                        
-                        echo '</div>';
-                        break;
-                        
-                    default:
-                        // For all other field types, use our field renderer
-                        echo $this->field_renderer->render_field_value($value, $field_object);
-                        break;
-                }
-                
-                echo '</div>'; // End of wrapper div
-            } else {
-                // Try to get it as a custom field
-                $value = get_post_meta($post_id, $field_name, true);
-                echo '<div class="wpfe-field wpfe-field-type-custom">';
-                echo esc_html($value);
-                echo '</div>';
-            }
-        } else {
-            // Standard WP fields
-            $post = get_post($post_id);
-            
-            echo '<div class="wpfe-field wpfe-field-type-wp">';
-            
-            switch ($field_name) {
-                case 'post_title':
-                    echo esc_html($post->post_title);
-                    break;
-                    
-                case 'post_content':
-                    // Use the_content filter to properly handle shortcodes and formatting
-                    echo apply_filters('the_content', $post->post_content);
-                    break;
-                    
-                case 'post_excerpt':
-                    // Preserve newlines but escape HTML
-                    echo nl2br(esc_html($post->post_excerpt));
-                    break;
-                    
-                default:
-                    // Try as a custom field
-                    $value = get_post_meta($post_id, $field_name, true);
-                    echo esc_html($value);
-                    break;
-            }
-            
-            echo '</div>'; // End of wrapper div
+        if (!isset($result['success']) || !$result['success']) {
+            wp_send_json_error(array(
+                'message' => isset($result['message']) ? $result['message'] : __('Failed to load field', 'wp-frontend-editor'),
+            ));
         }
         
-        $output = ob_get_clean();
-        
-        wp_send_json_success(array(
-            'html' => $output,
-        ));
+        wp_send_json_success($result);
     }
 }

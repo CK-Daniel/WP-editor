@@ -12,6 +12,11 @@ jQuery(document).ready(function($) {
     // Initialize all modules
     WPFE.core.init();
     
+    // Initialize native fields module if available
+    if (typeof WPFE.nativeFields !== 'undefined') {
+        WPFE.nativeFields.init();
+    }
+    
     // Add a debug helper if debug mode is enabled
     if (typeof wpfe_data !== 'undefined' && wpfe_data.debug_mode) {
         window.wpfeDebug = {

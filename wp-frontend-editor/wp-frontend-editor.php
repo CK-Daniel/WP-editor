@@ -37,6 +37,18 @@ define( 'WPFE_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
  */
 function wpfe_activate() {
     // Activation code here
+    
+    // Create log table
+    if ( class_exists( 'WP_Frontend_Editor_Logger' ) ) {
+        $logger = new WP_Frontend_Editor_Logger();
+        $logger->create_log_table();
+        
+        // Log plugin activation
+        wpfe_log( 'Plugin activated', 'info', array(
+            'version' => WPFE_VERSION,
+            'user_id' => get_current_user_id()
+        ));
+    }
 }
 register_activation_hook( __FILE__, 'wpfe_activate' );
 
@@ -45,6 +57,12 @@ register_activation_hook( __FILE__, 'wpfe_activate' );
  */
 function wpfe_deactivate() {
     // Deactivation code here
+    
+    // Clear scheduled events
+    $timestamp = wp_next_scheduled( 'wpfe_cleanup_logs' );
+    if ( $timestamp ) {
+        wp_unschedule_event( $timestamp, 'wpfe_cleanup_logs' );
+    }
 }
 register_deactivation_hook( __FILE__, 'wpfe_deactivate' );
 
@@ -69,12 +87,41 @@ add_action( 'plugins_loaded', 'wpfe_load_textdomain' );
  * Require necessary files.
  */
 require_once WPFE_PLUGIN_DIR . 'includes/class-wp-frontend-editor.php';
+require_once WPFE_PLUGIN_DIR . 'includes/class-wp-frontend-editor-logger.php';
+require_once WPFE_PLUGIN_DIR . 'includes/class-wp-frontend-editor-logs.php';
 
 /**
  * Initialize the plugin.
  */
 function wpfe_init() {
+    // Initialize main plugin
     $wpfe = new WP_Frontend_Editor();
     $wpfe->init();
+    
+    // Initialize logs
+    if ( is_admin() ) {
+        new WP_Frontend_Editor_Logs();
+    }
+    
+    // Make logger globally available
+    global $wpfe_logger;
+    $wpfe_logger = new WP_Frontend_Editor_Logger();
 }
 add_action( 'plugins_loaded', 'wpfe_init', 11 );
+
+/**
+ * Helper function to log messages.
+ * 
+ * @param string $message The log message.
+ * @param string $level   The log level (info, warning, error, success, debug).
+ * @param array  $context Additional context data.
+ */
+function wpfe_log( $message, $level = 'info', $context = array() ) {
+    global $wpfe_logger;
+    
+    if ( ! $wpfe_logger ) {
+        return;
+    }
+    
+    $wpfe_logger->log( $level, $message, $context );
+}

@@ -36,13 +36,22 @@ class WP_Frontend_Editor_Admin {
      * Add admin menu.
      */
     public function add_admin_menu() {
-        add_options_page(
+        // Main menu - using 'options-general.php' as parent
+        $main_page = add_options_page(
             __( 'WP Frontend Editor', 'wp-frontend-editor' ),
             __( 'Frontend Editor', 'wp-frontend-editor' ),
             'manage_options',
             'wp-frontend-editor',
             array( $this, 'render_settings_page' )
         );
+        
+        // Log when settings page is accessed
+        add_action( 'load-' . $main_page, function() {
+            wpfe_log( 'Settings page accessed', 'info', array(
+                'user_id' => get_current_user_id(),
+                'user_name' => wp_get_current_user()->display_name
+            ));
+        });
     }
 
     /**

@@ -76,6 +76,7 @@ class WP_Frontend_Editor_Fields_Handler {
                         'value' => $post->post_title,
                         'type'  => 'text',
                         'label' => __( 'Title', 'wp-frontend-editor' ),
+                        'source' => 'wordpress',
                     );
                     break;
 
@@ -85,6 +86,7 @@ class WP_Frontend_Editor_Fields_Handler {
                         'value' => $post->post_content,
                         'type'  => 'wysiwyg',
                         'label' => __( 'Content', 'wp-frontend-editor' ),
+                        'source' => 'wordpress',
                     );
                     break;
 
@@ -94,18 +96,22 @@ class WP_Frontend_Editor_Fields_Handler {
                         'value' => $post->post_excerpt,
                         'type'  => 'textarea',
                         'label' => __( 'Excerpt', 'wp-frontend-editor' ),
+                        'source' => 'wordpress',
                     );
                     break;
 
                 case 'featured_image':
+                case 'post_thumbnail':
                     $thumbnail_id = get_post_thumbnail_id( $post_id );
                     $thumbnail_url = $thumbnail_id ? wp_get_attachment_image_url( $thumbnail_id, 'thumbnail' ) : '';
                     
-                    $data['featured_image'] = array(
+                    $field_key = $field === 'featured_image' ? 'featured_image' : 'post_thumbnail';
+                    $data[$field_key] = array(
                         'value' => $thumbnail_id,
                         'url'   => $thumbnail_url,
                         'type'  => 'image',
                         'label' => __( 'Featured Image', 'wp-frontend-editor' ),
+                        'source' => 'wordpress',
                     );
                     break;
                     
@@ -138,7 +144,8 @@ class WP_Frontend_Editor_Fields_Handler {
                         'taxonomy' => 'category',
                         'options' => $category_options,
                         'label' => __( 'Categories', 'wp-frontend-editor' ),
-                        'hierarchical' => true
+                        'hierarchical' => true,
+                        'source' => 'wordpress',
                     );
                     break;
                     
@@ -170,7 +177,8 @@ class WP_Frontend_Editor_Fields_Handler {
                         'taxonomy' => 'post_tag',
                         'options' => $tag_options,
                         'label' => __( 'Tags', 'wp-frontend-editor' ),
-                        'hierarchical' => false
+                        'hierarchical' => false,
+                        'source' => 'wordpress',
                     );
                     break;
 
@@ -178,12 +186,33 @@ class WP_Frontend_Editor_Fields_Handler {
                     // Check if it's an ACF field
                     if ( class_exists( 'ACF' ) && function_exists( 'get_field' ) && function_exists( 'acf_get_field' ) ) {
                         $data = $this->get_acf_field_data($data, $field, $post_id);
+                    } elseif ( strpos( $field, 'meta_' ) === 0 ) {
+                        // Handle post meta fields
+                        $meta_key = substr( $field, 5 );
+                        $meta_value = get_post_meta( $post_id, $meta_key, true );
+                        
+                        $data[$field] = array(
+                            'value' => $meta_value,
+                            'type'  => is_array( $meta_value ) ? 'array' : 'text',
+                            'label' => $this->format_meta_key_label( $meta_key ),
+                            'source' => 'wordpress',
+                        );
                     }
                     break;
             }
         }
 
         return $data;
+    }
+    
+    /**
+     * Format a meta key as a label.
+     *
+     * @param string $meta_key The meta key.
+     * @return string The formatted label.
+     */
+    private function format_meta_key_label( $meta_key ) {
+        return ucwords( str_replace( array( '_', '-' ), ' ', $meta_key ) );
     }
 
     /**
@@ -323,11 +352,19 @@ class WP_Frontend_Editor_Fields_Handler {
                 'label' => $acf_field['label'],
                 'required' => !empty($acf_field['required']),
                 'instructions' => isset($acf_field['instructions']) ? $acf_field['instructions'] : '',
+                'source' => 'acf', // Add source information
+                'field_name' => $acf_field['name'], // Add the field name
+                'field_key' => $acf_field['key'], // Add the field key
             );
             
             // Merge extra data if available
             if (!empty($extra_data)) {
                 $data[$acf_field['key']] = array_merge($data[$acf_field['key']], $extra_data);
+            }
+            
+            // Also add an entry by field name for easier lookup
+            if ($field !== $acf_field['key'] && $field === $acf_field['name']) {
+                $data[$field] = $data[$acf_field['key']];
             }
         }
         
@@ -608,5 +645,206 @@ class WP_Frontend_Editor_Fields_Handler {
      */
     public function process_acf_value_for_saving($field, $value) {
         return $this->acf_utils->process_acf_value_for_saving($field, $value);
+    }
+    
+    /**
+     * Get the rendered field HTML for the native editor interface
+     *
+     * @param string $field_name The field name.
+     * @param int    $post_id    The post ID.
+     * @return array The result with HTML.
+     */
+    public function get_rendered_field( $field_name, $post_id ) {
+        // Validate input parameters
+        if ( empty( $field_name ) ) {
+            return array(
+                'success' => false,
+                'message' => __( 'Field name is required', 'wp-frontend-editor' ),
+                'error_code' => 'missing_field_name',
+            );
+        }
+        
+        if ( empty( $post_id ) || !is_numeric( $post_id ) ) {
+            return array(
+                'success' => false,
+                'message' => __( 'Valid post ID is required', 'wp-frontend-editor' ),
+                'error_code' => 'invalid_post_id',
+            );
+        }
+        
+        // Check if post exists
+        $post = get_post( $post_id );
+        if ( !$post ) {
+            return array(
+                'success' => false,
+                'message' => __( 'Post not found', 'wp-frontend-editor' ),
+                'error_code' => 'post_not_found',
+            );
+        }
+        
+        // Check if user can edit this post
+        if ( !current_user_can( 'edit_post', $post_id ) ) {
+            return array(
+                'success' => false,
+                'message' => __( 'You do not have permission to edit this post', 'wp-frontend-editor' ),
+                'error_code' => 'permission_denied',
+            );
+        }
+        
+        // Get field data
+        try {
+            $field_data = array();
+            $field_data_array = $this->get_field_data( $post_id, array( $field_name ) );
+            
+            // The get_field_data method returns an array of fields, so we need to extract the one we want
+            if ( isset( $field_data_array[ $field_name ] ) ) {
+                $field_data = $field_data_array[ $field_name ];
+                $field_data['success'] = true;
+            } elseif ( $field_name === 'post_title' && isset( $field_data_array['post_title'] ) ) {
+                $field_data = $field_data_array['post_title'];
+                $field_data['success'] = true;
+            } elseif ( $field_name === 'post_content' && isset( $field_data_array['post_content'] ) ) {
+                $field_data = $field_data_array['post_content'];
+                $field_data['success'] = true;
+            } elseif ( $field_name === 'post_excerpt' && isset( $field_data_array['post_excerpt'] ) ) {
+                $field_data = $field_data_array['post_excerpt'];
+                $field_data['success'] = true;
+            } elseif ( $field_name === 'post_thumbnail' && isset( $field_data_array['post_thumbnail'] ) ) {
+                $field_data = $field_data_array['post_thumbnail'];
+                $field_data['success'] = true;
+            } else {
+                // Check if it's an ACF field key that was found
+                foreach ( $field_data_array as $key => $data ) {
+                    if ( isset( $data['field_name'] ) && $data['field_name'] === $field_name ) {
+                        $field_data = $data;
+                        $field_data['success'] = true;
+                        break;
+                    }
+                }
+            }
+            
+            if ( empty( $field_data ) ) {
+                return array(
+                    'success' => false,
+                    'message' => sprintf( __( 'Field "%s" not found', 'wp-frontend-editor' ), esc_html( $field_name ) ),
+                    'error_code' => 'field_not_found',
+                    'field_name' => $field_name,
+                );
+            }
+        } catch ( Exception $e ) {
+            return array(
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error_code' => 'field_data_exception',
+            );
+        }
+        
+        // Check if we should use native field editor interface
+        $use_native_interface = apply_filters(
+            'wpfe_use_native_field_interface', 
+            true, 
+            $field_name, 
+            $post_id, 
+            $field_data
+        );
+        
+        if ( $use_native_interface ) {
+            // Use our new templating system for native field rendering
+            ob_start();
+            
+            $args = array(
+                'field_name'   => $field_name,
+                'post_id'      => $post_id,
+                'field_type'   => isset( $field_data['type'] ) ? $field_data['type'] : '',
+                'field_source' => isset( $field_data['source'] ) ? $field_data['source'] : 'wordpress',
+            );
+            
+            // Make sure WP_Frontend_Editor_Native_Field_Loader is loaded
+            if ( ! class_exists( 'WP_Frontend_Editor_Native_Field_Loader' ) ) {
+                require_once WP_FRONTEND_EDITOR_PATH . 'includes/ajax/class-wp-frontend-editor-native-field-loader.php';
+            }
+            
+            // Include our native field editor template
+            include WP_FRONTEND_EDITOR_PATH . 'public/templates/native-field-editor.php';
+            
+            $html = ob_get_clean();
+            
+            $field_data['html'] = $html;
+            $field_data['field_name'] = $field_name;
+            
+            return $field_data;
+        }
+        
+        // Use the default rendering for legacy compatibility
+        if ( isset( $field_data['source'] ) && $field_data['source'] === 'acf' && function_exists( 'get_field_object' ) ) {
+            // For ACF fields, use the field renderer
+            if ( ! class_exists( 'WP_Frontend_Editor_Field_Renderer' ) ) {
+                require_once WP_FRONTEND_EDITOR_PATH . 'includes/ajax/class-wp-frontend-editor-field-renderer.php';
+            }
+            
+            $renderer = new WP_Frontend_Editor_Field_Renderer();
+            
+            $field_object = get_field_object( $field_name, $post_id );
+            $field_value = get_field( $field_name, $post_id );
+            
+            // For complex field types like repeater and flexible content
+            if ( $field_object && isset( $field_object['type'] ) ) {
+                if ( $field_object['type'] === 'repeater' ) {
+                    $field_data['html'] = $renderer->render_acf_repeater( $field_name, $post_id, $field_object );
+                } elseif ( $field_object['type'] === 'flexible_content' ) {
+                    $field_data['html'] = $renderer->render_acf_flexible_content( $field_name, $post_id, $field_object );
+                } elseif ( $field_object['type'] === 'group' ) {
+                    $field_data['html'] = $renderer->render_acf_group( $field_name, $post_id, $field_object, $field_value );
+                } else {
+                    // For regular fields
+                    $field_data['html'] = $renderer->render_field_value( $field_value, $field_object );
+                }
+            } else {
+                $field_data['html'] = '<div class="wpfe-error">' . esc_html__( 'ACF field object not found', 'wp-frontend-editor' ) . '</div>';
+            }
+        } else {
+            // For WordPress core fields, format the value
+            $field_data['html'] = $this->format_field_value( $field_data['value'], $field_data['type'] );
+        }
+        
+        $field_data['field_name'] = $field_name;
+        
+        return $field_data;
+    }
+    
+    /**
+     * Format a field value for display.
+     *
+     * @param mixed  $value The field value.
+     * @param string $type  The field type.
+     * @return string The formatted value.
+     */
+    private function format_field_value( $value, $type ) {
+        if ( null === $value || '' === $value ) {
+            return '<span class="wpfe-empty-value">' . esc_html__( '(No value)', 'wp-frontend-editor' ) . '</span>';
+        }
+
+        switch ( $type ) {
+            case 'text':
+                return '<div class="wpfe-preview-text">' . esc_html( $value ) . '</div>';
+                
+            case 'wysiwyg':
+                return '<div class="wpfe-preview-content">' . wp_kses_post( $value ) . '</div>';
+                
+            case 'textarea':
+                return '<div class="wpfe-preview-textarea">' . nl2br( esc_html( $value ) ) . '</div>';
+                
+            case 'image':
+                if ( is_numeric( $value ) ) {
+                    return wp_get_attachment_image( $value, 'medium' );
+                }
+                return '<div class="wpfe-empty-value">' . esc_html__( '(No image)', 'wp-frontend-editor' ) . '</div>';
+                
+            default:
+                if ( is_array( $value ) ) {
+                    return '<pre>' . esc_html( json_encode( $value, JSON_PRETTY_PRINT ) ) . '</pre>';
+                }
+                return esc_html( $value );
+        }
     }
 }

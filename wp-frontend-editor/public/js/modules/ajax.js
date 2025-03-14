@@ -81,7 +81,9 @@ WPFE.ajax = (function($) {
                 
                 var response = {
                     success: false,
-                    message: error || wpfe_data.i18n.ajax_error || 'Unknown error'
+                    message: error || wpfe_data.i18n.ajax_error || 'Unknown error',
+                    error_code: 'ajax_error',
+                    status: xhr.status
                 };
                 
                 // Try to parse error response if available
@@ -97,12 +99,45 @@ WPFE.ajax = (function($) {
                     }
                 }
                 
+                // Add more descriptive messages for common errors
+                if (xhr.status === 0) {
+                    response.message = 'Could not connect to the server. Please check your internet connection.';
+                    response.error_code = 'connection_error';
+                } else if (xhr.status === 403) {
+                    response.message = 'You do not have permission to perform this action. Please refresh the page and try again.';
+                    response.error_code = 'permission_denied';
+                } else if (xhr.status === 404) {
+                    response.message = 'The requested resource could not be found. Please reload the page and try again.';
+                    response.error_code = 'not_found';
+                } else if (xhr.status === 500) {
+                    response.message = 'Internal server error. Please try again later or contact support.';
+                    response.error_code = 'server_error';
+                } else if (status === 'timeout') {
+                    response.message = 'The request timed out. Please try again.';
+                    response.error_code = 'timeout';
+                } else if (status === 'abort') {
+                    response.message = 'The request was aborted. Please try again.';
+                    response.error_code = 'abort';
+                }
+                
                 if (typeof callback === 'function') {
                     callback(response);
                 }
                 
+                // Show error notification if WPFE UI is available
+                if (typeof WPFE.ui !== 'undefined' && typeof WPFE.ui.showNotification === 'function') {
+                    WPFE.ui.showNotification(response.message, 'error');
+                }
+                
                 if (wpfe_data.debug_mode) {
-                    console.error('AJAX Error:', error, xhr);
+                    console.error('AJAX Error:', {
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        responseText: xhr.responseText,
+                        error: error,
+                        action: data.action,
+                        errorCode: response.error_code
+                    });
                 }
                 
                 // Check if we can process more items in the queue
@@ -122,6 +157,7 @@ WPFE.ajax = (function($) {
     function queueRequest(action, additionalData, callback, priority) {
         var data = {
             action: action,
+            nonce: wpfe_data.nonce,
             security: wpfe_data.nonce,
             _wpnonce: wpfe_data.nonce
         };
@@ -231,12 +267,38 @@ WPFE.ajax = (function($) {
          * @param {Function} callback The callback function
          */
         saveFieldChange: function(fieldName, postId, value, callback) {
-            queueRequest('wpfe_save_fields', {
-                post_id: postId,
-                fields: {
-                    [fieldName]: value
-                }
-            }, callback, true);
+            // Check if we should use the native fields handler
+            if (typeof WPFE.nativeFields !== 'undefined' && WPFE.nativeFields.isInitialized()) {
+                // Get field values from the native fields module
+                var fieldValues = WPFE.nativeFields.getFieldValues();
+                
+                queueRequest('wpfe_save_fields', {
+                    post_id: postId,
+                    fields: fieldValues
+                }, callback, true);
+            } else {
+                // Use the original approach
+                queueRequest('wpfe_save_fields', {
+                    post_id: postId,
+                    fields: {
+                        [fieldName]: value
+                    }
+                }, callback, true);
+            }
+        },
+        
+        /**
+         * Fetch a rendered field from the server
+         * 
+         * @param {string} fieldName The field name
+         * @param {number} postId The post ID
+         * @param {Function} callback The callback function
+         */
+        getRenderedField: function(fieldName, postId, callback) {
+            queueRequest('wpfe_get_rendered_field', {
+                field_name: fieldName,
+                post_id: postId
+            }, callback);
         },
         
         /**

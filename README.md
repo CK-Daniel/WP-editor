@@ -15,6 +15,7 @@ A fully native WordPress plugin that allows front-end editing of static content,
   - And many more
 - Real-time preview of edits
 - Built with security and performance in mind
+- Comprehensive logging system with beautiful admin interface
 - Compatible with any theme
 
 ## Code Structure
@@ -29,6 +30,8 @@ wp-frontend-editor/
 │   ├── class-wp-frontend-editor-admin.php # Admin functionality
 │   ├── class-wp-frontend-editor-ajax.php  # Main AJAX handler
 │   ├── class-wp-frontend-editor-acf.php   # ACF integration
+│   ├── class-wp-frontend-editor-logger.php # Logging functionality
+│   ├── class-wp-frontend-editor-logs.php   # Logs admin interface
 │   ├── ajax/                         # Modular AJAX components
 │       ├── class-wp-frontend-editor-ajax-base.php    # Base AJAX functionality
 │       ├── class-wp-frontend-editor-acf-utils.php    # ACF utility functions
@@ -41,6 +44,13 @@ wp-frontend-editor/
 │   ├── css/
 │   ├── js/
 │   └── templates/
+├── admin/                           # Admin assets
+│   ├── css/
+│   │   ├── admin.css                # Admin styles 
+│   │   └── logs.css                 # Logs interface styles
+│   └── js/
+│       ├── admin.js                 # Admin scripts
+│       └── logs.js                  # Logs interface scripts
 └── languages/                        # Translations
 ```
 
@@ -50,6 +60,8 @@ wp-frontend-editor/
 - **WP_Frontend_Editor_Admin**: Handles all admin-related functionality like settings pages.
 - **WP_Frontend_Editor_AJAX**: Main AJAX controller that coordinates with specialized handlers.
 - **WP_Frontend_Editor_ACF**: Integration with Advanced Custom Fields.
+- **WP_Frontend_Editor_Logger**: Provides comprehensive logging capabilities.
+- **WP_Frontend_Editor_Logs**: Creates beautiful admin interface for logs viewing and management.
 
 #### AJAX Modules:
 
@@ -77,6 +89,7 @@ The plugin implements several security measures:
 - Permission checks for all operations
 - Data sanitization and validation
 - Controlled output escaping
+- Comprehensive logging for security audits and debugging
 
 ## Performance
 
@@ -84,3 +97,17 @@ The plugin implements several security measures:
 - Caching for frequently accessed data
 - Lazy loading of components
 - Efficient field lookups with caching
+
+## Logging System
+
+The plugin includes a comprehensive logging system with the following features:
+
+- Beautiful, modern admin interface for viewing logs
+- Multiple log levels (info, warning, error, success, debug)
+- Detailed context for each log entry
+- Filtering by log level, user, date range, and search terms
+- Real-time statistics and visualizations with interactive charts
+- Log entry retention management
+- Export logs to CSV
+- User action tracking for security and auditing
+- Performance metrics

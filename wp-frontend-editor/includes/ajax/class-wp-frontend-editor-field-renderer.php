@@ -243,7 +243,12 @@ class WP_Frontend_Editor_Field_Renderer {
             // Default handling for other field types and arrays
             default:
                 if (is_array($value)) {
-                    return '<pre class="acf-json-data">' . esc_html(json_encode($value, JSON_PRETTY_PRINT)) . '</pre>';
+                    $json_data = json_encode($value, JSON_PRETTY_PRINT);
+                    if ($json_data === false) {
+                        // Handle JSON encoding errors
+                        return '<span class="acf-empty-value">' . esc_html__('(Unable to display value)', 'wp-frontend-editor') . '</span>';
+                    }
+                    return '<pre class="acf-json-data">' . esc_html($json_data) . '</pre>';
                 }
                 return esc_html($value);
         }

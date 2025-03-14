@@ -569,6 +569,20 @@ WPFE.fields = (function($) {
             
             // Get field data
             var fieldData = response.data;
+            
+            // If we have pre-rendered HTML from the server, use it directly
+            if (fieldData.html) {
+                sidebarContent.html(fieldData.html);
+                
+                // Set field type data attribute on the content wrapper
+                sidebarContent.attr('data-wpfe-field-type', fieldData.type || '');
+                
+                // Trigger an event that the field was loaded with pre-rendered HTML
+                $(document).trigger('wpfe:field_loaded', [fieldName, fieldData]);
+                return;
+            }
+            
+            // Otherwise, use the client-side rendering
             var fieldHTML = '';
             
             // Basic field wrapper template
@@ -614,6 +628,9 @@ WPFE.fields = (function($) {
             
             // Set field type data attribute
             sidebarContent.find('.wpfe-field-wrapper').attr('data-wpfe-field-type', fieldData.type);
+            
+            // Trigger an event that the field was loaded
+            $(document).trigger('wpfe:field_loaded', [fieldName, fieldData]);
         },
         
         /**
@@ -649,6 +666,14 @@ WPFE.fields = (function($) {
          */
         getFieldValue: function(fieldName) {
             var sidebar = WPFE.core.getSidebar();
+            
+            // Check if we're using native fields
+            if (typeof WPFE.nativeFields !== 'undefined' && WPFE.nativeFields.isInitialized()) {
+                // Get values from the native fields module
+                return WPFE.nativeFields.getFieldValues();
+            }
+            
+            // Otherwise, use the original field value extraction
             var fieldWrapper = sidebar.find('.wpfe-field-wrapper');
             var fieldType = fieldWrapper.attr('data-wpfe-field-type') || 'text';
             

@@ -1,0 +1,257 @@
+/**
+ * WP Frontend Editor - Native Fields Styles
+ */
+
+/* Field Editor Container */
+.wpfe-native-field-editor {
+    padding: 15px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    color: #333;
+}
+
+/* Native Field Styling */
+.wpfe-native-field {
+    margin-bottom: 20px;
+}
+
+.wpfe-native-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.wpfe-field-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.07);
+    background-color: #fff;
+    font-size: 14px;
+}
+
+.wpfe-field-input:focus {
+    border-color: #007cba;
+    box-shadow: 0 0 0 1px #007cba;
+    outline: 2px solid transparent;
+}
+
+/* Title Field */
+.wpfe-title-input {
+    font-size: 18px;
+    padding: 10px;
+    font-weight: 500;
+}
+
+/* Text Area Fields */
+.wpfe-excerpt-input {
+    min-height: 120px;
+}
+
+/* Media Fields */
+.wpfe-thumbnail-container {
+    margin-top: 10px;
+}
+
+.wpfe-thumbnail-preview {
+    margin-bottom: 10px;
+    background-color: #f7f7f7;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.wpfe-thumbnail-img {
+    max-width: 100%;
+    height: auto;
+    max-height: 200px;
+}
+
+.wpfe-thumbnail-actions {
+    margin-top: 10px;
+}
+
+.wpfe-thumbnail-actions .button {
+    margin-right: 5px;
+}
+
+/* Description Text */
+.description {
+    color: #666;
+    font-style: italic;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+/* WordPress Editor */
+.wpfe-wysiwyg-wrapper {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.wpfe-wysiwyg-wrapper .wp-editor-tools {
+    background: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+    padding: 5px 10px;
+}
+
+/* Meta Fields */
+.wpfe-meta-input {
+    font-family: monospace;
+}
+
+/* Field Info Section */
+.wpfe-field-info {
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.wpfe-field-meta {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.wpfe-field-type-indicator,
+.wpfe-field-source-indicator {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.wpfe-field-type-indicator {
+    background-color: #e5f5fa;
+    color: #0078a0;
+}
+
+.wpfe-field-source-indicator {
+    background-color: #f0f6e3;
+    color: #537d22;
+}
+
+.wpfe-field-support-text {
+    font-size: 13px;
+    color: #666;
+    font-style: italic;
+}
+
+/* Error Messages */
+.wpfe-error {
+    padding: 15px;
+    background-color: #fbeaea;
+    border-left: 4px solid #dc3232;
+    color: #444;
+    margin-bottom: 20px;
+}
+
+/* ACF Field Styling Overrides */
+.acf-field {
+    padding: 15px 0 !important;
+    border-top: none !important;
+}
+
+.acf-input-wrap {
+    overflow: visible !important;
+}
+
+.acf-relationship .selection {
+    min-height: 200px;
+}
+
+/* Media button fixes */
+.media-modal {
+    z-index: 999999 !important;
+}
+
+.media-modal-backdrop {
+    z-index: 999998 !important;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 1024px) {
+    /* Tablet adjustments */
+    .wpfe-field-input {
+        font-size: 16px; /* Better for touch screens */
+    }
+    
+    .wpfe-editor-setting {
+        margin-bottom: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Standard mobile adjustments */
+    .wpfe-title-input {
+        font-size: 16px;
+        padding: 8px;
+    }
+    
+    .acf-fields.-left > .acf-field {
+        padding: 8px 0 !important;
+    }
+    
+    .acf-fields.-left > .acf-field:before {
+        display: none;
+    }
+    
+    .acf-fields.-left > .acf-field > .acf-label,
+    .acf-fields.-left > .acf-field > .acf-input {
+        float: none !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .acf-fields.-left > .acf-field > .acf-label {
+        margin-bottom: 10px;
+    }
+    
+    /* Better touch targets for mobile */
+    .wpfe-thumbnail-actions .button,
+    .acf-field .button {
+        min-height: 44px;
+        padding: 10px 15px;
+    }
+    
+    /* Improve form inputs for touch */
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="number"],
+    input[type="url"],
+    input[type="search"],
+    textarea {
+        font-size: 16px !important; /* Prevents iOS zoom on focus */
+    }
+}
+
+@media (max-width: 480px) {
+    /* Small mobile adjustments */
+    .wpfe-native-field-editor {
+        padding: 10px;
+    }
+    
+    .wpfe-field-meta {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .wpfe-field-type-indicator,
+    .wpfe-field-source-indicator {
+        font-size: 10px;
+    }
+    
+    /* Simplify layout for very small screens */
+    .acf-relationship .selection .choices,
+    .acf-relationship .selection .values {
+        width: 100% !important;
+        float: none !important;
+    }
+}

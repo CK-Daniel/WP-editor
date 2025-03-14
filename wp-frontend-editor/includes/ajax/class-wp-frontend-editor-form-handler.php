@@ -184,9 +184,14 @@ class WP_Frontend_Editor_Form_Handler {
      * @return mixed The sanitized value
      */
     public function sanitize_field_value( $value, $field_name, $field_data = null ) {
+        // Handle the case where field_data is a string (field type)
+        if (is_string($field_data)) {
+            $field_data = array('type' => $field_data);
+        }
+        
         // ACF field sanitization
         if ( $field_data && isset( $field_data['type'] ) ) {
-            return $this->acf_utils->process_acf_value_for_saving( $value, $field_data );
+            return $this->acf_utils->process_acf_value_for_saving( $field_data, $value );
         }
         
         // WordPress core fields
@@ -256,19 +261,36 @@ class WP_Frontend_Editor_Form_Handler {
     public function process_form_submission( $data, $post_id ) {
         // Verify nonce
         if ( ! isset( $data['nonce'] ) || ! $this->verify_nonce( $data['nonce'], 'wpfe-editor-nonce' ) ) {
+            wpfe_log( 'Nonce verification failed', 'error', array(
+                'post_id' => $post_id,
+                'user_id' => get_current_user_id()
+            ));
             return new WP_Error( 'invalid_nonce', __( 'Security verification failed', 'wp-frontend-editor' ) );
         }
         
         // Check permissions
         if ( ! $this->can_edit_post( $post_id ) ) {
+            wpfe_log( 'Permission check failed in form handler', 'error', array(
+                'post_id' => $post_id,
+                'user_id' => get_current_user_id()
+            ));
             return new WP_Error( 'permission_denied', __( 'You do not have permission to edit this post', 'wp-frontend-editor' ) );
         }
+        
+        // Log form submission start
+        wpfe_log( 'Form submission started', 'info', array(
+            'post_id' => $post_id,
+            'post_title' => get_the_title($post_id),
+            'user_id' => get_current_user_id(),
+            'field_count' => isset($data['fields']) ? count($data['fields']) : 0
+        ));
         
         // Initialize result
         $result = array(
             'message' => __( 'Form submitted successfully', 'wp-frontend-editor' ),
             'fields' => array(),
             'errors' => array(),
+            'updated_fields' => array(),
         );
         
         // Process fields
@@ -280,10 +302,31 @@ class WP_Frontend_Editor_Form_Handler {
                     $field_data = get_field_object( $field_name, $post_id );
                 }
                 
+                // Handle native field types that might come from our native editor
+                if (!$field_data && strpos($field_name, 'wpfe_field_') === 0) {
+                    // Extract the real field name and type from our naming convention
+                    $parts = explode('_', substr($field_name, 10), 2);
+                    if (count($parts) === 2) {
+                        $field_type = $parts[0];
+                        $real_field_name = $parts[1];
+                        $field_data = array('type' => $field_type);
+                        $field_name = $real_field_name;
+                    }
+                }
+                
                 // Validate field
                 $validated_value = $this->validate_field_value( $field_value, $field_name, $field_data );
                 if ( is_wp_error( $validated_value ) ) {
-                    $result['errors'][$field_name] = $validated_value->get_error_message();
+                    $error_message = $validated_value->get_error_message();
+                    $result['errors'][$field_name] = $error_message;
+                    
+                    // Log validation error
+                    wpfe_log( 'Field validation error', 'warning', array(
+                        'post_id' => $post_id,
+                        'field_name' => $field_name,
+                        'error' => $error_message
+                    ));
+                    
                     continue;
                 }
                 
@@ -294,6 +337,13 @@ class WP_Frontend_Editor_Form_Handler {
                 if ( $field_data ) {
                     // ACF field
                     update_field( $field_name, $sanitized_value, $post_id );
+                    
+                    // Log ACF field update
+                    wpfe_log( 'ACF field updated', 'debug', array(
+                        'post_id' => $post_id,
+                        'field_name' => $field_name,
+                        'field_type' => isset($field_data['type']) ? $field_data['type'] : 'unknown'
+                    ));
                 } else {
                     // WordPress core field or custom field
                     if ( in_array( $field_name, array( 'post_title', 'post_content', 'post_excerpt' ) ) ) {
@@ -302,24 +352,52 @@ class WP_Frontend_Editor_Form_Handler {
                             'ID' => $post_id,
                             $field_name => $sanitized_value,
                         ) );
+                        
+                        // Log core field update
+                        wpfe_log( 'WordPress core field updated', 'debug', array(
+                            'post_id' => $post_id,
+                            'field_name' => $field_name
+                        ));
                     } else {
                         // Update custom field
                         update_post_meta( $post_id, $field_name, $sanitized_value );
+                        
+                        // Log custom field update
+                        wpfe_log( 'Custom field updated', 'debug', array(
+                            'post_id' => $post_id,
+                            'field_name' => $field_name
+                        ));
                     }
                 }
                 
                 $result['fields'][$field_name] = $sanitized_value;
+                $result['updated_fields'][] = $field_name;
             }
         }
         
         // Return error if there were validation issues
         if ( ! empty( $result['errors'] ) ) {
+            // Log validation failure
+            wpfe_log( 'Form submission failed due to validation errors', 'error', array(
+                'post_id' => $post_id,
+                'post_title' => get_the_title($post_id),
+                'errors' => $result['errors']
+            ));
+            
             return new WP_Error( 
                 'validation_failed', 
                 __( 'Some fields failed validation', 'wp-frontend-editor' ),
                 $result['errors']
             );
         }
+        
+        // Log successful form submission
+        wpfe_log( 'Form submission completed successfully', 'success', array(
+            'post_id' => $post_id,
+            'post_title' => get_the_title($post_id),
+            'field_count' => count($result['updated_fields']),
+            'updated_fields' => $result['updated_fields']
+        ));
         
         return $result;
     }

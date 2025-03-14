@@ -83,6 +83,7 @@ class WP_Frontend_Editor {
         require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-ajax-base.php';
         require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-acf-utils.php';
         require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-field-renderer.php';
+        require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-native-field-loader.php';
         require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-fields-handler.php';
         require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-form-handler.php';
         require_once WPFE_PLUGIN_DIR . 'includes/ajax/class-wp-frontend-editor-media-handler.php';
@@ -105,6 +106,12 @@ class WP_Frontend_Editor {
         if ( $this->is_acf_active() ) {
             $this->acf = new WP_Frontend_Editor_ACF();
         }
+        
+        // Log plugin initialization
+        wpfe_log( 'WP Frontend Editor initialized', 'info', array(
+            'version' => WPFE_VERSION,
+            'acf_active' => $this->is_acf_active(),
+        ));
     }
 
     /**
@@ -188,6 +195,23 @@ class WP_Frontend_Editor {
                 true
             );
         }
+        
+        // Enqueue our native fields JavaScript
+        wp_enqueue_script(
+            'wp-frontend-editor-native-fields',
+            WPFE_PLUGIN_URL . 'public/js/native-fields.js',
+            array( 'wp-frontend-editor', 'jquery', 'wp-util' ),
+            WPFE_VERSION,
+            true
+        );
+        
+        // Enqueue our native fields CSS
+        wp_enqueue_style(
+            'wp-frontend-editor-native-fields',
+            WPFE_PLUGIN_URL . 'public/css/native-fields.css',
+            array( 'wp-frontend-editor' ),
+            WPFE_VERSION
+        );
 
         // Apply custom CSS if defined
         if ( ! empty( $this->options['custom_css'] ) ) {
@@ -287,6 +311,13 @@ class WP_Frontend_Editor {
         
         // Include the editor sidebar template
         include WPFE_PLUGIN_DIR . 'public/templates/editor-sidebar.php';
+        
+        // Load required WordPress admin styles for the field editor
+        wp_enqueue_style( 'common' );
+        wp_enqueue_style( 'forms' );
+        
+        // Prepare for media uploads
+        wp_enqueue_media();
     }
 
     /**

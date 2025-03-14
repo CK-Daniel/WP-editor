@@ -1,0 +1,678 @@
+/**
+ * Log viewer styles
+ */
+
+.wpfe-logs-page {
+    margin: 20px 0;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.wpfe-logs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    background: #f9f9f9;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.wpfe-logs-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.wpfe-logs-header-desc {
+    color: #757575;
+    margin: 5px 0 0;
+}
+
+.wpfe-logs-filters {
+    padding: 15px 25px;
+    background: #fbfbfb;
+    border-bottom: 1px solid #e8e8e8;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.wpfe-logs-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wpfe-logs-filters select,
+.wpfe-logs-filters input {
+    height: 36px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.wpfe-logs-search {
+    position: relative;
+    flex-grow: 1;
+    max-width: 300px;
+}
+
+.wpfe-logs-search input {
+    width: 100%;
+    padding-left: 32px;
+}
+
+.wpfe-logs-search .dashicons {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #777;
+}
+
+.wpfe-logs-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.wpfe-logs-actions .button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.wpfe-logs-table-container {
+    overflow-x: auto;
+}
+
+.wpfe-logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.wpfe-logs-table th,
+.wpfe-logs-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eaeaea;
+}
+
+.wpfe-logs-table th {
+    background: #f3f3f3;
+    font-weight: 600;
+    color: #333;
+    position: sticky;
+    top: 0;
+}
+
+.wpfe-logs-table tr:hover {
+    background-color: #f9f9f9;
+}
+
+.wpfe-logs-table .column-id {
+    width: 60px;
+}
+
+.wpfe-logs-table .column-timestamp {
+    width: 150px;
+}
+
+.wpfe-logs-table .column-level {
+    width: 90px;
+}
+
+.wpfe-logs-table .column-user {
+    width: 130px;
+}
+
+.wpfe-logs-table .column-ip {
+    width: 120px;
+}
+
+.wpfe-logs-table .column-actions {
+    width: 80px;
+    text-align: right;
+}
+
+.wpfe-level-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.wpfe-level-info {
+    background-color: #edf7ff;
+    color: #0078d7;
+}
+
+.wpfe-level-warning {
+    background-color: #fff8e6;
+    color: #9a6700;
+}
+
+.wpfe-level-error {
+    background-color: #ffeeee;
+    color: #d73a49;
+}
+
+.wpfe-level-success {
+    background-color: #e6ffee;
+    color: #28a745;
+}
+
+.wpfe-level-debug {
+    background-color: #f6f6f6;
+    color: #666;
+}
+
+.wpfe-log-actions {
+    visibility: hidden;
+}
+
+.wpfe-logs-table tr:hover .wpfe-log-actions {
+    visibility: visible;
+}
+
+.wpfe-log-action {
+    color: #777;
+    text-decoration: none;
+    margin-left: 6px;
+    cursor: pointer;
+}
+
+.wpfe-log-action:hover {
+    color: #1e8cbe;
+}
+
+.wpfe-log-action.wpfe-log-delete:hover {
+    color: #d63638;
+}
+
+.wpfe-log-details {
+    display: none;
+    background: #f9f9f9;
+    padding: 15px;
+}
+
+.wpfe-log-details.is-open {
+    display: block;
+}
+
+.wpfe-log-detail-grid {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 8px;
+}
+
+.wpfe-log-detail-label {
+    font-weight: 600;
+    color: #555;
+}
+
+.wpfe-log-context {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 10px;
+    overflow-x: auto;
+    max-height: 200px;
+}
+
+.wpfe-logs-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 25px;
+    background: #f9f9f9;
+    border-top: 1px solid #e8e8e8;
+}
+
+.wpfe-pagination-info {
+    color: #666;
+}
+
+.wpfe-pagination-links {
+    display: flex;
+    gap: 5px;
+}
+
+.wpfe-pagination-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #333;
+}
+
+.wpfe-pagination-link:hover {
+    background: #f5f5f5;
+    color: #1e8cbe;
+}
+
+.wpfe-pagination-link.current {
+    background: #1e8cbe;
+    border-color: #1e8cbe;
+    color: #fff;
+}
+
+.wpfe-pagination-link.disabled {
+    cursor: default;
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.wpfe-log-empty {
+    padding: 50px 25px;
+    text-align: center;
+    color: #777;
+}
+
+.wpfe-log-empty-icon {
+    font-size: 40px;
+    color: #ddd;
+    margin-bottom: 15px;
+}
+
+/* Date picker styles */
+.wpfe-logs-datepicker {
+    background-color: #fff;
+    cursor: pointer;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .wpfe-logs-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .wpfe-logs-actions {
+        margin-left: 0;
+        margin-top: 10px;
+    }
+    
+    .wpfe-logs-filters {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .wpfe-logs-filter-group {
+        width: 100%;
+    }
+    
+    .wpfe-logs-search {
+        max-width: none;
+        width: 100%;
+    }
+    
+    .wpfe-logs-table .column-id,
+    .wpfe-logs-table .column-ip {
+        display: none;
+    }
+}
+
+/* Modal styles */
+.wpfe-modal {
+    display: none;
+    position: fixed;
+    z-index: 99999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow: auto;
+}
+
+.wpfe-modal-content {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 20px;
+    width: 50%;
+    max-width: 500px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    position: relative;
+}
+
+.wpfe-modal-header {
+    margin-bottom: 15px;
+}
+
+.wpfe-modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.wpfe-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 20px;
+    color: #666;
+    cursor: pointer;
+}
+
+.wpfe-modal-close:hover {
+    color: #d63638;
+}
+
+.wpfe-modal-body {
+    margin-bottom: 20px;
+}
+
+.wpfe-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Settings section */
+.wpfe-logs-settings {
+    margin-top: 20px;
+}
+
+.wpfe-logs-settings-form {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 20px 25px;
+}
+
+.wpfe-logs-settings-title {
+    margin-top: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.wpfe-settings-row {
+    margin-bottom: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.wpfe-settings-field {
+    flex: 1;
+    min-width: 250px;
+}
+
+.wpfe-settings-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.wpfe-settings-field p.description {
+    margin-top: 5px;
+    color: #777;
+}
+
+.wpfe-settings-field select,
+.wpfe-settings-field input[type="number"] {
+    width: 100%;
+}
+
+.wpfe-settings-actions {
+    margin-top: 20px;
+}
+
+/* Loading animation */
+.wpfe-loading {
+    text-align: center;
+    padding: 30px;
+    color: #777;
+}
+
+.wpfe-loading-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #1e8cbe;
+    border-radius: 50%;
+    animation: wpfe-spin 1s linear infinite;
+    margin-bottom: 10px;
+}
+
+@keyframes wpfe-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Toggle switch */
+.wpfe-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.wpfe-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.wpfe-switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .3s;
+    border-radius: 24px;
+}
+
+.wpfe-switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+.wpfe-switch input:checked + .wpfe-switch-slider {
+    background-color: #2196F3;
+}
+
+.wpfe-switch input:focus + .wpfe-switch-slider {
+    box-shadow: 0 0 1px #2196F3;
+}
+
+.wpfe-switch input:checked + .wpfe-switch-slider:before {
+    transform: translateX(26px);
+}
+
+/* Dark mode support */
+body.admin-color-dark .wpfe-logs-page {
+    background: #32373c;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.admin-color-dark .wpfe-logs-header,
+body.admin-color-dark .wpfe-logs-filters,
+body.admin-color-dark .wpfe-logs-pagination {
+    background: #23282d;
+    border-color: #3c434a;
+}
+
+body.admin-color-dark .wpfe-logs-table th {
+    background: #191f25;
+    color: #eee;
+}
+
+body.admin-color-dark .wpfe-logs-table td {
+    border-color: #3c434a;
+}
+
+body.admin-color-dark .wpfe-logs-table tr:hover {
+    background-color: #2c3338;
+}
+
+body.admin-color-dark .wpfe-pagination-link {
+    background: #32373c;
+    border-color: #3c434a;
+    color: #eee;
+}
+
+body.admin-color-dark .wpfe-pagination-link:hover {
+    background: #40464d;
+}
+
+body.admin-color-dark .wpfe-logs-header-desc,
+body.admin-color-dark .wpfe-pagination-info {
+    color: #bbb;
+}
+
+body.admin-color-dark .wpfe-log-empty {
+    color: #bbb;
+}
+
+body.admin-color-dark .wpfe-log-empty-icon {
+    color: #3c434a;
+}
+
+body.admin-color-dark .wpfe-log-details {
+    background: #23282d;
+}
+
+body.admin-color-dark .wpfe-log-context {
+    background: #32373c;
+    border-color: #3c434a;
+}
+
+body.admin-color-dark .wpfe-log-action {
+    color: #bbb;
+}
+
+body.admin-color-dark .wpfe-log-action:hover {
+    color: #00b9eb;
+}
+
+body.admin-color-dark .wpfe-log-action.wpfe-log-delete:hover {
+    color: #f86368;
+}
+
+/* Charts styles */
+.wpfe-logs-charts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.wpfe-logs-chart {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+    flex: 1;
+    min-width: 300px;
+}
+
+.wpfe-chart-header {
+    margin-bottom: 15px;
+}
+
+.wpfe-chart-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.wpfe-chart-container {
+    height: 250px;
+    position: relative;
+}
+
+body.admin-color-dark .wpfe-logs-chart {
+    background: #32373c;
+}
+
+body.admin-color-dark .wpfe-chart-title {
+    color: #eee;
+}
+
+/* Cards */
+.wpfe-logs-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.wpfe-logs-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+    flex: 1;
+    min-width: 220px;
+    text-align: center;
+}
+
+.wpfe-card-value {
+    font-size: 36px;
+    font-weight: 600;
+    margin: 10px 0;
+}
+
+.wpfe-card-label {
+    color: #666;
+    font-size: 14px;
+}
+
+.wpfe-card-icon {
+    margin-bottom: 10px;
+    font-size: 24px;
+    height: 24px;
+    width: 24px;
+}
+
+.wpfe-card-info {
+    color: #0078d7;
+}
+
+.wpfe-card-warning {
+    color: #9a6700;
+}
+
+.wpfe-card-error {
+    color: #d73a49;
+}
+
+.wpfe-card-success {
+    color: #28a745;
+}
+
+body.admin-color-dark .wpfe-logs-card {
+    background: #32373c;
+}
+
+body.admin-color-dark .wpfe-card-value {
+    color: #eee;
+}
+
+body.admin-color-dark .wpfe-card-label {
+    color: #bbb;
+}
