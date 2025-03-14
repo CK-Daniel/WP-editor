@@ -77,6 +77,19 @@ WPFE.elements = (function($) {
                 console.log('[WPFE] Set position:relative on element');
             }
             
+            // ALWAYS force visibility in debug mode regardless of previous settings
+            // This ensures we can always see the buttons, even if there are theme conflicts
+            if (wpfe_data.debug_mode) {
+                $button.css({
+                    'opacity': '1',
+                    'transform': 'scale(1)',
+                    'visibility': 'visible',
+                    'z-index': '999999',
+                    'position': 'absolute',
+                    'pointer-events': 'auto'
+                }).addClass('wpfe-force-visible');
+            }
+            
             // Optimize button position for visibility
             optimizeButtonPosition($element, $button);
             
@@ -389,44 +402,238 @@ WPFE.elements = (function($) {
      * @return {string|null} The guessed field name or null if unknown
      */
     function guessFieldName($element) {
-        // If element has an ID, use that as a hint
-        var id = $element.attr('id');
-        if (id) {
-            // Check for common ID patterns
-            if (/^content|^main-content|text|body/.test(id)) {
-                return 'content';
-            }
-            if (/title|heading|header/.test(id)) {
-                return 'title';
-            }
-            if (/excerpt|summary|description/.test(id)) {
-                return 'excerpt';
+        try {
+            // If element has an ID, use that as a hint
+            var id = $element.attr('id');
+            if (id) {
+                // Check for common ID patterns
+                if (/^content|^main-content|text|body/.test(id)) {
+                    return 'post_content';
+                }
+                if (/title|heading|header/.test(id)) {
+                    return 'post_title';
+                }
+                if (/excerpt|summary|description/.test(id)) {
+                    return 'post_excerpt';
+                }
+                
+                // If ID appears to be a field name format
+                if (/^field[-_]/.test(id)) {
+                    return id.replace(/^field[-_]/, '');
+                }
+                
+                // Check for ACF field IDs
+                if (/^acf[-_]/.test(id)) {
+                    return id.replace(/^acf[-_]/, 'acf_');
+                }
             }
             
-            // If ID appears to be a field name format
-            if (/^field[-_]/.test(id)) {
-                return id.replace(/^field[-_]/, '');
+            // Check classes for hints
+            var classList = $element.attr('class') ? $element.attr('class').split(/\s+/) : [];
+            for (var i = 0; i < classList.length; i++) {
+                if (/^field-/.test(classList[i])) {
+                    return classList[i].replace(/^field-/, '');
+                }
+                if (/^acf-field-/.test(classList[i])) {
+                    return 'acf_' + classList[i].replace(/^acf-field-/, '');
+                }
+                if (/content|entry-content|post-content/.test(classList[i])) {
+                    return 'post_content';
+                }
+                if (/title|entry-title|post-title/.test(classList[i])) {
+                    return 'post_title';
+                }
+                if (/excerpt|entry-excerpt|post-excerpt|summary/.test(classList[i])) {
+                    return 'post_excerpt';
+                }
             }
+            
+            // Check element type and content
+            if ($element.is('h1, h2, header > *, .title')) {
+                return 'post_title';
+            }
+            
+            // Check for image galleries
+            if ($element.find('img').length > 1 || $element.hasClass('gallery') || $element.find('.gallery').length) {
+                return 'gallery';
+            }
+            
+            // Check for single featured image
+            if ($element.is('.featured-image, .post-thumbnail') || 
+                ($element.find('img').length === 1 && $element.text().trim().length < 20)) {
+                return 'featured_image';
+            }
+            
+            // Check element content and surrounding structure
+            var text = $element.text().trim();
+            
+            // Look for typical title patterns
+            if ($element.is('header *, h1, h2, h3') || 
+                ($element.parent().is('header') && text.length < 100) ||
+                (text.length > 5 && text.length < 100 && $element.css('font-size') && 
+                 parseInt($element.css('font-size')) > 18)) {
+                return 'post_title';
+            }
+            
+            // Look for typical content patterns
+            if (text.length > 200 || 
+                $element.find('p').length > 1 || 
+                $element.is('article, .content, .entry, .post-content, .entry-content')) {
+                return 'post_content';
+            }
+            
+            // Look for typical excerpt patterns
+            if (text.length > 50 && text.length < 300 &&
+                $element.is('p:first-child, .excerpt, .summary, .lead')) {
+                return 'post_excerpt';
+            }
+            
+            // Check for ACF repeater patterns
+            if ($element.hasClass('acf-repeater') || $element.find('.acf-row').length) {
+                return 'acf_repeater';
+            }
+            
+            // Look for typical field indicators in parent elements
+            var $parent = $element.parent();
+            if ($parent.attr('id') && /field-/.test($parent.attr('id'))) {
+                return $parent.attr('id').replace(/^field-/, '');
+            }
+            
+            // Default to content field for larger text blocks
+            if (text.length > 100) {
+                return 'post_content';
+            }
+            
+            // Default to custom content field if we can't determine
+            return 'custom_content';
+        } catch (e) {
+            console.error('[WPFE] Error in guessFieldName:', e);
+            return 'custom_content'; // Fallback
         }
-        
-        // Check element type and content
-        if ($element.is('h1, h2, header > *, .title')) {
-            return 'post_title';
+    }
+    
+    /**
+     * Find ACF fields in the page and add edit buttons
+     *
+     * @param {number} postId The post ID to associate with the fields
+     */
+    function findAcfFields(postId) {
+        try {
+            console.log('[WPFE] Searching for ACF fields...');
+            
+            // Collection of ACF field selectors, from most to least specific
+            var acfSelectors = [
+                // Field wrappers with specific ACF classes
+                '.acf-field',
+                '[class*="acf-field-"]',
+                
+                // Field groups
+                '.acf-fields',
+                '.acf-form-fields',
+                '.acf-block-fields',
+                
+                // Specific field types (commonly used in front-end)
+                '.acf-image-field',
+                '.acf-gallery-field',
+                '.acf-repeater',
+                '.acf-flexible-content',
+                
+                // Generic ACF-related elements
+                '[data-name][data-key]',
+                '[data-type="acf"]',
+                '[data-acf-field-type]',
+                
+                // Custom class patterns used by themes
+                '[class*="-acf-"]',
+                '[class*="field-acf-"]',
+                '[class*="acf-content"]'
+            ];
+            
+            // Check each selector and add edit buttons to matched elements
+            var totalFound = 0;
+            
+            acfSelectors.forEach(function(selector) {
+                try {
+                    var $elements = $(selector);
+                    console.log('[WPFE] Found', $elements.length, 'potential ACF fields with selector:', selector);
+                    
+                    $elements.each(function() {
+                        var $element = $(this);
+                        
+                        // Skip elements that are inside the admin bar
+                        if ($element.closest('#wpadminbar').length) {
+                            return true;
+                        }
+                        
+                        // Skip elements that are very small
+                        if ($element.width() < 50 || $element.height() < 20) {
+                            return true;
+                        }
+                        
+                        // Skip elements that are already marked as editable
+                        if ($element.hasClass('wpfe-editable') || 
+                            $element.find('.wpfe-editable').length || 
+                            $element.closest('.wpfe-editable').length) {
+                            return true;
+                        }
+                        
+                        // Determine field name from various attributes
+                        var fieldName = '';
+                        
+                        // Check data attributes first (most reliable)
+                        if ($element.data('key')) {
+                            fieldName = 'acf_' + $element.data('key');
+                        } else if ($element.data('name')) {
+                            fieldName = 'acf_' + $element.data('name');
+                        } else if ($element.data('acf-field-key')) {
+                            fieldName = 'acf_' + $element.data('acf-field-key');
+                        } else {
+                            // Extract from class
+                            var acfClass = '';
+                            var classList = $element.attr('class') ? $element.attr('class').split(/\s+/) : [];
+                            
+                            for (var i = 0; i < classList.length; i++) {
+                                if (classList[i].indexOf('acf-field-') === 0) {
+                                    acfClass = classList[i];
+                                    break;
+                                }
+                            }
+                            
+                            if (acfClass) {
+                                fieldName = 'acf_' + acfClass.substring(10); // Remove 'acf-field-' prefix
+                            } else {
+                                // Generate a name based on content
+                                fieldName = 'acf_field_' + (totalFound + 1);
+                            }
+                        }
+                        
+                        // Make element editable
+                        $element.addClass('wpfe-editable')
+                            .attr('data-wpfe-field', fieldName)
+                            .attr('data-wpfe-post-id', postId)
+                            .attr('data-wpfe-identified-by', 'acf-detection')
+                            .attr('data-wpfe-field-type', 'acf');
+                        
+                        // Add edit button
+                        addEditButton($element, fieldName, postId);
+                        totalFound++;
+                        
+                        if (wpfe_data.debug_mode) {
+                            console.log('[WPFE] Found ACF field:', fieldName, $element);
+                        }
+                    });
+                } catch (e) {
+                    console.error('[WPFE] Error processing ACF selector', selector, e);
+                }
+            });
+            
+            console.log('[WPFE] Total ACF fields found:', totalFound);
+            return totalFound;
+            
+        } catch (e) {
+            console.error('[WPFE] Error finding ACF fields:', e);
+            return 0;
         }
-        
-        // Check for image galleries
-        if ($element.find('img').length > 1 || $element.hasClass('gallery') || $element.find('.gallery').length) {
-            return 'gallery';
-        }
-        
-        // Check for single featured image
-        if ($element.is('.featured-image, .post-thumbnail') || 
-            ($element.find('img').length === 1 && $element.text().trim().length < 20)) {
-            return 'featured_image';
-        }
-        
-        // Default to custom content field if we can't determine
-        return 'custom_content';
     }
 
     // Public API
@@ -445,6 +652,14 @@ WPFE.elements = (function($) {
                     setEditButtons: function() {},
                     getActiveField: function() { return null; }
                 };
+            }
+            
+            // Always run ACF field detection regardless of other strategies
+            // This ensures we find all ACF fields even if other detection methods fail
+            var postId = wpfe_data.post_id;
+            if (postId) {
+                // Find ACF fields first to ensure they're marked before other strategies run
+                findAcfFields(postId);
             }
             
             // =====================================================================
@@ -1589,13 +1804,19 @@ WPFE.elements = (function($) {
                 console.log('[WPFE] Total edit buttons created:', editButtons.length);
                 console.log('[WPFE] Visible edit buttons:', $('.wpfe-edit-button:visible').length);
                 
-                // If no elements found or we're early in the discovery process
-                if (editableElements.length === 0) {
-                    console.warn('[WPFE] No editable elements found in attempt ' + discoveryAttempts + '!');
+                // If no or too few elements found or we're early in the discovery process
+                if (editableElements.length === 0 || (discoveryAttempts >= 1 && editableElements.length < 3)) {
+                    console.warn('[WPFE] No or too few editable elements found in attempt ' + discoveryAttempts + '! Elements found: ' + editableElements.length);
                     
-                    // Try advanced discovery techniques based on attempt
-                    if (discoveryAttempts >= 2) {
-                        // On the second attempt, try content-based identification again with lower threshold
+                    // Try ACF field detection on first attempt
+                    if (discoveryAttempts === 1) {
+                        console.log('[WPFE] Trying targeted ACF field detection...');
+                        findAcfFields(postId);
+                    }
+                    
+                    // Try advanced discovery techniques based on attempt - start earlier with not enough elements
+                    if (discoveryAttempts >= 1) { // Start on first attempt rather than second
+                        // Try content-based identification with lower threshold
                         console.log('[WPFE] Trying content matching with lower threshold...');
                         
                         // Try re-running content matching with lower threshold
@@ -1625,7 +1846,7 @@ WPFE.elements = (function($) {
                                                 console.error('[WPFE] Error calculating content similarity in recovery mode:', e);
                                                 similarity = 0; // Safe default
                                             }
-                                            if (similarity > 0.3) { // Lower threshold than normal
+                                            if (similarity > 0.25) { // Even lower threshold for better discovery
                                                 console.log('[WPFE] Lower threshold match:', similarity.toFixed(2), 
                                                           'Element:', $element.prop('tagName'), 
                                                           'Field:', fieldName);
@@ -1668,11 +1889,37 @@ WPFE.elements = (function($) {
                         });
                     }
                     
-                    // Last-ditch emergency identification on final attempt
-                    if (discoveryAttempts >= maxDiscoveryAttempts - 1) {
-                        console.log('[WPFE] Final attempt: Running emergency identification on ANY content...');
+                    // Last-ditch emergency identification - run sooner if very few elements found
+                    if (discoveryAttempts >= maxDiscoveryAttempts - 1 || (discoveryAttempts >= 2 && editableElements.length < 2)) {
+                        console.log('[WPFE] Running emergency identification on ANY content...');
                         
-                        // Try to make ANY significant content editable
+                        // Core WordPress fields - always attempt to find these
+                        var coreFieldSelectors = [
+                            { name: 'post_title', selectors: ['h1', 'h1.entry-title', '.post-title', 'h1.title', 'article h1', 'header h1'] },
+                            { name: 'post_content', selectors: ['article', '.entry-content', '.post-content', '.content', 'main'] }
+                        ];
+                        
+                        // Try to find core fields first
+                        coreFieldSelectors.forEach(function(field) {
+                            if ($('[data-wpfe-field="' + field.name + '"]').length === 0) {
+                                // Field not found yet, try selectors
+                                for (var i = 0; i < field.selectors.length; i++) {
+                                    var $element = $(field.selectors[i]).first();
+                                    if ($element.length && !$element.hasClass('wpfe-editable')) {
+                                        $element.addClass('wpfe-editable')
+                                            .attr('data-wpfe-field', field.name)
+                                            .attr('data-wpfe-post-id', postId)
+                                            .attr('data-wpfe-identified-by', 'emergency-core');
+                                        
+                                        addEditButton($element, field.name, postId);
+                                        console.log('[WPFE] Emergency core field found:', field.name);
+                                        break;
+                                    }
+                                }
+                            }
+                        });
+                        
+                        // Then try to make ANY significant content editable
                         $('h1, h2, p, div:not(:has(div))').each(function() {
                             var $element = $(this);
                             var text = $element.text().trim();

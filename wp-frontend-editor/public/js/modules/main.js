@@ -18,6 +18,14 @@ jQuery(document).ready(function($) {
     // Initialize with more robust debugging
     console.log('[WPFE] Main module initializing...');
     
+    // Add helper function to mark modules as initialized
+    WPFE.markModuleInitialized = function(moduleName) {
+        if (WPFE.modulesReady && typeof moduleName === 'string') {
+            WPFE.modulesReady[moduleName] = true;
+            console.log('[WPFE] Module marked as initialized:', moduleName);
+        }
+    };
+    
     if (typeof wpfe_data === 'undefined') {
         console.error('[WPFE] CRITICAL ERROR: wpfe_data is not defined! Plugin data not properly loaded.');
         
@@ -115,6 +123,16 @@ jQuery(document).ready(function($) {
             checkModules();
             console.log('[WPFE] Final module loading status:');
             WPFE.debug.checkScriptLoading();
+            
+            // Call findAcfFields directly to ensure it runs early
+            if (WPFE.elements && typeof WPFE.elements.findAcfFields === 'function' && wpfe_data.post_id) {
+                console.log('[WPFE] Running early ACF field detection...');
+                try {
+                    WPFE.elements.findAcfFields(wpfe_data.post_id);
+                } catch (e) {
+                    console.error('[WPFE] Error in early ACF field detection:', e);
+                }
+            }
         }, 1000);
     }
     

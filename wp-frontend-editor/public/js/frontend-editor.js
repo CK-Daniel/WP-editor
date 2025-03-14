@@ -150,6 +150,23 @@ jQuery(document).ready(function($) {
         createEmergencySidebar();
     }
     
+    // Ensure ACF module is properly initialized if ACF is active
+    if (wpfe_data.is_acf_active && (!WPFE.acf || typeof WPFE.acf.init !== 'function')) {
+        console.warn('[WPFE] ACF is active but ACF module is not initialized properly. Creating fallback.');
+        WPFE.acf = WPFE.acf || {};
+        WPFE.acf.init = function() {
+            console.warn('[WPFE] Using ACF module fallback initialization');
+            return true;
+        };
+        WPFE.acf.getFieldValue = function(fieldName) {
+            return null;
+        };
+        WPFE.acf.isAcfField = function(fieldName) {
+            return fieldName.indexOf('acf_') === 0;
+        };
+        WPFE.modulesReady.acf = true;
+    }
+    
     // Check for script elements to ensure files are being loaded
     var scriptCheck = function() {
         var scriptElements = document.querySelectorAll('script[src*="wp-frontend-editor"]');
