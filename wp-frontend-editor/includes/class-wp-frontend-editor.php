@@ -310,8 +310,7 @@ class WP_Frontend_Editor {
                     'unsupported_field' => __( 'This field type is not supported yet.', 'wp-frontend-editor' ),
                     'discovered_field' => __( 'Discovered field', 'wp-frontend-editor' ),
                     'auto_save'       => __( 'Auto-save', 'wp-frontend-editor' ),
-                ),
-            )
+                )
         );
         
         // Log script localization to debug log
