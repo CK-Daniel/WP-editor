@@ -110,8 +110,8 @@ class WP_Frontend_Editor_AJAX {
         check_ajax_referer('wpfe-editor-nonce', 'nonce', true);
         
         // Get parameters
-        $post_id = isset($_GET['post_id']) ? intval($_GET['post_id']) : 0;
-        $field_names = isset($_GET['field_names']) ? sanitize_text_field($_GET['field_names']) : '';
+        $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+        $field_names = isset($_POST['field_names']) ? sanitize_text_field($_POST['field_names']) : '';
         
         if (!$post_id) {
             wp_send_json_error(array(
@@ -218,7 +218,7 @@ class WP_Frontend_Editor_AJAX {
         check_ajax_referer('wpfe-editor-nonce', 'nonce', true);
         
         // Get parameters
-        $attachment_id = isset($_GET['attachment_id']) ? intval($_GET['attachment_id']) : 0;
+        $attachment_id = isset($_POST['attachment_id']) ? intval($_POST['attachment_id']) : 0;
         
         if (!$attachment_id) {
             wp_send_json_error(array(
@@ -250,7 +250,7 @@ class WP_Frontend_Editor_AJAX {
         check_ajax_referer('wpfe-editor-nonce', 'nonce', true);
         
         // Get parameters
-        $attachment_ids = isset($_GET['attachment_ids']) ? $_GET['attachment_ids'] : '';
+        $attachment_ids = isset($_POST['attachment_ids']) ? $_POST['attachment_ids'] : '';
         
         if (empty($attachment_ids)) {
             wp_send_json_error(array(
@@ -302,8 +302,8 @@ class WP_Frontend_Editor_AJAX {
         }
         
         // Get parameters
-        $post_id = isset($_GET['post_id']) ? intval($_GET['post_id']) : 0;
-        $field_name = isset($_GET['field_name']) ? sanitize_text_field($_GET['field_name']) : '';
+        $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+        $field_name = isset($_POST['field_name']) ? sanitize_text_field($_POST['field_name']) : '';
         
         if (!$post_id || !$field_name) {
             wp_send_json_error(array(
