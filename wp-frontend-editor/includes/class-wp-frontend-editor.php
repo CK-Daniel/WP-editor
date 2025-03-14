@@ -374,6 +374,10 @@ class WP_Frontend_Editor {
                 )
         );
         
+        // CRITICAL: Localize the script data BEFORE enqueueing modules
+        // This ensures wpfe_data is available when frontend-editor.js loads
+        wp_localize_script('wp-frontend-editor', 'wpfe_data', $script_data);
+        
         // Enhanced script debugging
         error_log('WP Frontend Editor: Script enqueuing completed successfully');
         error_log('WP Frontend Editor: Main script handle: wp-frontend-editor');
