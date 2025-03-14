@@ -7,6 +7,12 @@ var WPFE = WPFE || {};
 
 WPFE.ui = (function($) {
     'use strict';
+    
+    // Mark this module as loaded
+    WPFE.modulesReady.ui = true;
+    if (WPFE.debug && WPFE.debug.modulesLoaded) {
+        WPFE.debug.modulesLoaded.push('ui');
+    }
 
     // Private variables
     var notificationTimeout = null;

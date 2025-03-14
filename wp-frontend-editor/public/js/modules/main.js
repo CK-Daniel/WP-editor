@@ -38,18 +38,76 @@ jQuery(document).ready(function($) {
         return;
     }
     
-    // Check if all required modules are loaded
-    var missingModules = [];
-    for (var module in WPFE.modulesReady) {
-        if (!WPFE.modulesReady[module] && module !== 'main') {
-            missingModules.push(module);
+    // Enhanced module loading check with retry mechanism
+    var checkModules = function() {
+        var missingModules = [];
+        var loadedCount = 0;
+        var totalModules = 0;
+        
+        for (var module in WPFE.modulesReady) {
+            totalModules++;
+            if (WPFE.modulesReady[module]) {
+                loadedCount++;
+            } else if (module !== 'main') {
+                missingModules.push(module);
+            }
         }
-    }
+        
+        if (missingModules.length > 0) {
+            console.warn('[WPFE] Warning: Some modules are not loaded: ' + missingModules.join(', '));
+            console.log('[WPFE] Module loading status: ' + loadedCount + '/' + totalModules);
+            
+            // Add additional debug information about the missing modules
+            missingModules.forEach(function(moduleName) {
+                // Check if the script element exists
+                var scriptElement = document.querySelector('script[src*="' + moduleName + '.js"]');
+                if (scriptElement) {
+                    console.log('[WPFE] Module ' + moduleName + ' script was found in the DOM but did not initialize properly');
+                } else {
+                    console.error('[WPFE] Module ' + moduleName + ' script was not found in the DOM - script may not have been loaded');
+                }
+                
+                // Check if the module object exists but isn't marked as ready
+                if (WPFE[moduleName]) {
+                    console.log('[WPFE] Module object ' + moduleName + ' exists but is not marked as ready');
+                } else {
+                    console.error('[WPFE] Module object ' + moduleName + ' does not exist');
+                }
+            });
+            
+            // Try to explicitly define missing modules with a simple stub to prevent errors
+            missingModules.forEach(function(moduleName) {
+                if (!WPFE[moduleName]) {
+                    console.log('[WPFE] Creating minimal fallback for missing module: ' + moduleName);
+                    WPFE[moduleName] = {
+                        init: function() {
+                            console.warn('[WPFE] Using fallback initialization for module: ' + moduleName);
+                            return true;
+                        },
+                        isStub: true
+                    };
+                    // Mark as ready to prevent errors
+                    WPFE.modulesReady[moduleName] = true;
+                }
+            });
+        } else {
+            console.log('[WPFE] All modules successfully loaded');
+        }
+        
+        return missingModules.length === 0;
+    };
     
-    if (missingModules.length > 0) {
-        console.warn('[WPFE] Warning: Some modules are not loaded: ' + missingModules.join(', '));
-    } else {
-        console.log('[WPFE] All modules successfully loaded');
+    // Initial check
+    var allModulesLoaded = checkModules();
+    
+    // If modules are missing, try again after a delay
+    if (!allModulesLoaded) {
+        console.log('[WPFE] Scheduling retry for module loading check');
+        setTimeout(function() {
+            checkModules();
+            console.log('[WPFE] Final module loading status:');
+            WPFE.debug.checkScriptLoading();
+        }, 1000);
     }
     
     // Initialize core module

@@ -7,6 +7,12 @@ var WPFE = WPFE || {};
 
 WPFE.ajax = (function($) {
     'use strict';
+    
+    // Mark this module as loaded
+    WPFE.modulesReady.ajax = true;
+    if (WPFE.debug && WPFE.debug.modulesLoaded) {
+        WPFE.debug.modulesLoaded.push('ajax');
+    }
 
     // Private variables
     var pendingRequests = {};

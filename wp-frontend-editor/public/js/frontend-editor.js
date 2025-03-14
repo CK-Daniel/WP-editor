@@ -78,10 +78,60 @@ jQuery(document).ready(function($) {
     WPFE.debug.log('Document ready, waiting for modules to load...');
     WPFE.debug.checkDataAvailability();
     
+    // Check for script elements to ensure files are being loaded
+    var scriptCheck = function() {
+        var scriptElements = document.querySelectorAll('script[src*="wp-frontend-editor"]');
+        console.log('[WPFE] Found ' + scriptElements.length + ' WP Frontend Editor script elements');
+        
+        if (scriptElements.length > 0) {
+            // Log the paths to help with debugging
+            console.log('[WPFE] Script elements found:');
+            Array.prototype.forEach.call(scriptElements, function(script) {
+                console.log(' - ' + script.src);
+            });
+        } else {
+            console.error('[WPFE] No script elements found with "wp-frontend-editor" in the src attribute!');
+        }
+        
+        // Specifically look for modules
+        var moduleScripts = document.querySelectorAll('script[src*="modules"]');
+        console.log('[WPFE] Found ' + moduleScripts.length + ' module script elements');
+        
+        if (moduleScripts.length > 0) {
+            // Log each module script
+            console.log('[WPFE] Module scripts found:');
+            Array.prototype.forEach.call(moduleScripts, function(script) {
+                // Extract module name from URL
+                var urlParts = script.src.split('/');
+                var filename = urlParts[urlParts.length - 1];
+                var moduleName = filename.replace('.js', '').replace(/\?.+$/, '');
+                
+                console.log(' - ' + moduleName + ': ' + script.src);
+                
+                // Check if module registered itself
+                if (WPFE.modulesReady && moduleName in WPFE.modulesReady) {
+                    console.log('   Status: ' + (WPFE.modulesReady[moduleName] ? 'Loaded' : 'Not loaded'));
+                }
+            });
+        } else {
+            console.error('[WPFE] No module scripts found!');
+        }
+    };
+    
+    // Run script check
+    scriptCheck();
+    
     // Check script loading status after a slight delay
     setTimeout(function() {
         WPFE.debug.checkScriptLoading();
     }, 1000);
+    
+    // Final check after a longer delay
+    setTimeout(function() {
+        console.log('[WPFE] Final module loading check:');
+        WPFE.debug.checkScriptLoading();
+        scriptCheck();
+    }, 3000);
 });
 
 // The original code has been refactored into:

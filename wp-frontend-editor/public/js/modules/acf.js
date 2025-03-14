@@ -7,6 +7,12 @@ var WPFE = WPFE || {};
 
 WPFE.acf = (function($) {
     'use strict';
+    
+    // Mark this module as loaded
+    WPFE.modulesReady.acf = true;
+    if (WPFE.debug && WPFE.debug.modulesLoaded) {
+        WPFE.debug.modulesLoaded.push('acf');
+    }
 
     // Private variables
     var acfFieldTypes = {

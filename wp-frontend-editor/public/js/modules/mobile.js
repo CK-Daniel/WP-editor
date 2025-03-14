@@ -7,6 +7,12 @@ var WPFE = WPFE || {};
 
 WPFE.mobile = (function($) {
     'use strict';
+    
+    // Mark this module as loaded
+    WPFE.modulesReady.mobile = true;
+    if (WPFE.debug && WPFE.debug.modulesLoaded) {
+        WPFE.debug.modulesLoaded.push('mobile');
+    }
 
     // Private variables
     var isMobileDevice = false;

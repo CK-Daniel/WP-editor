@@ -7,6 +7,12 @@ var WPFE = WPFE || {};
 
 WPFE.events = (function($) {
     'use strict';
+    
+    // Mark this module as loaded
+    WPFE.modulesReady.events = true;
+    if (WPFE.debug && WPFE.debug.modulesLoaded) {
+        WPFE.debug.modulesLoaded.push('events');
+    }
 
     // Private variables
     var activeField = null;

@@ -7,6 +7,12 @@ var WPFE = WPFE || {};
 
 WPFE.fields = (function($) {
     'use strict';
+    
+    // Mark this module as loaded
+    WPFE.modulesReady.fields = true;
+    if (WPFE.debug && WPFE.debug.modulesLoaded) {
+        WPFE.debug.modulesLoaded.push('fields');
+    }
 
     // Private variables
     var activeEditors = [];
