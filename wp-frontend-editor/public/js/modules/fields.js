@@ -600,6 +600,15 @@ WPFE.fields = (function($) {
                 return;
             }
             
+            // If field type is undefined, set a default and log warning
+            if (!fieldData.type) {
+                console.warn('Field type is undefined for field: ' + fieldName + ', using text as fallback');
+                fieldData.type = 'text';
+                fieldData.original_type = 'unknown';
+                fieldData.description = (fieldData.description || '') + 
+                    ' <span class="wpfe-field-warning">Field type could not be determined. Using text field as fallback.</span>';
+            }
+            
             // Handle different field sources and special cases
             var source = fieldData.source || 'wordpress';
             
@@ -673,16 +682,23 @@ WPFE.fields = (function($) {
                         break;
                         
                     default:
-                        // For unknown types, use text field but add a warning message
+                        // For unknown or undefined types, use text field but add a warning message
                         if (wpfe_data.debug_mode) {
-                            console.warn('Unknown field type:', fieldData.type, 'for field:', fieldName);
+                            console.log('Unknown field type:', fieldData.type, 'for field:', fieldName);
                         }
                         
-                        // Add warning that this is a fallback rendering
-                        fieldData.description = (fieldData.description || '') + 
-                            ' <span class="wpfe-field-warning">Field type "' + 
-                            WPFE.utils.escapeHTML(fieldData.type) + 
-                            '" is not fully supported and is being rendered as a text field.</span>';
+                        // Handle undefined field type by setting a default
+                        if (!fieldData.type) {
+                            fieldData.type = 'text';
+                            fieldData.description = (fieldData.description || '') + 
+                                ' <span class="wpfe-field-warning">Field type is missing. Using text field as fallback.</span>';
+                        } else {
+                            // Add warning that this is a fallback rendering for known but unsupported type
+                            fieldData.description = (fieldData.description || '') + 
+                                ' <span class="wpfe-field-warning">Field type "' + 
+                                WPFE.utils.escapeHTML(fieldData.type) + 
+                                '" is not fully supported and is being rendered as a text field.</span>';
+                        }
                         
                         fieldHTML = renderTextField(fieldData);
                 }

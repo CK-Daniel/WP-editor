@@ -50,8 +50,12 @@ class WP_Frontend_Editor_ACF_Utils {
      * @return array|false The field data array if found, false otherwise
      */
     public function find_acf_field_by_name( $field_name, $post_id, $recursion_depth = 0 ) {
+        // Log for debugging purposes
+        error_log('WPFE ACF Utils: Looking for field: ' . $field_name . ' in post: ' . $post_id);
+        
         // Prevent excessive recursion
         if ( $recursion_depth > 10 ) {
+            error_log('WPFE ACF Utils: Max recursion depth reached for field: ' . $field_name);
             return false;
         }
         

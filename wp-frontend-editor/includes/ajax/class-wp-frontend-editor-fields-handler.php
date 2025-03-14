@@ -241,17 +241,30 @@ class WP_Frontend_Editor_Fields_Handler {
                     
                     // Final fallback - create a text field as placeholder
                     if (!$field_handled) {
+                        // Check if this is an ACF field by naming convention
+                        $is_acf_field = false;
+                        $acf_prefixes = array('acf_', 'field_');
+                        foreach ($acf_prefixes as $prefix) {
+                            if (strpos($field, $prefix) === 0) {
+                                $is_acf_field = true;
+                                break;
+                            }
+                        }
+                        
                         // Add a placeholder field so the UI doesn't break
                         $data[$field] = array(
                             'value' => '',
-                            'type'  => 'text',
+                            'type'  => 'text', // Default to text as fallback
                             'label' => $this->format_meta_key_label( $field ),
-                            'source' => 'wordpress',
+                            'source' => $is_acf_field ? 'acf' : 'wordpress',
                             'placeholder' => true,
                             'description' => __('This field was not found in the database. It will be created when you save.', 'wp-frontend-editor')
                         );
                         
-                        wpfe_log('Field not found, created placeholder', 'warning', array('field' => $field));
+                        wpfe_log('Field not found, created placeholder', 'warning', array(
+                            'field' => $field,
+                            'is_acf_field' => $is_acf_field
+                        ));
                     }
                     
                     break;
@@ -797,8 +810,13 @@ class WP_Frontend_Editor_Fields_Handler {
                     'source' => 'fallback',
                     'field_name' => $field_name,
                     'error_code' => 'field_not_found_fallback',
-                    'html' => '<div class="wpfe-field-not-found">' . 
-                            sprintf( __( 'Field "%s" was not found. Try refreshing the page.', 'wp-frontend-editor' ), esc_html( $field_name ) ) . 
+                    'html' => '<div class="wpfe-field-not-found wpfe-error-field">' . 
+                            '<p>' . sprintf( __( 'Field "%s" was not found.', 'wp-frontend-editor' ), esc_html( $field_name ) ) . '</p>' .
+                            '<p class="wpfe-error-details">' . __( 'This might be a custom field that doesn\'t exist yet. If you\'re trying to create a new custom field, you may need to create it in the WordPress admin area first.', 'wp-frontend-editor' ) . '</p>' .
+                            '<div class="wpfe-fallback-field">' .
+                            '<label>' . esc_html( $field_name ) . '</label>' .
+                            '<input type="text" name="wpfe-field-value" placeholder="' . __('Enter value for this field', 'wp-frontend-editor') . '">' .
+                            '</div>' .
                             '</div>'
                 );
             }
