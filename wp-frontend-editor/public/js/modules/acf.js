@@ -770,14 +770,18 @@ WPFE.acf = (function($) {
                         valueSubField.parent_field = fieldData.name;
                         valueSubField.row_index = j;
                         
-                        // Try all possible key formats ACF might use
+                        // Enhanced key matching for better field detection
                         var possibleKeys = [
                             valueSubField.key,                              // Direct field key (field_xxx)
                             valueSubField.name,                             // Full field name path
                             valueSubField.key.replace('field_', ''),        // ACF sometimes strips field_ prefix
                             valueSubField.name.split('[').pop().split(']')[0], // Last segment of name
                             valueSubField.name.split('_').pop(),            // Last part after underscore
-                            valueSubField.name.replace(/[\[\]']+/g, '')     // Name with brackets removed
+                            valueSubField.name.replace(/[\[\]']+/g, ''),    // Name with brackets removed
+                            valueSubField.name.split(/[\[\]]+/).pop(),      // Last segment after bracket notation
+                            'field_' + valueSubField.name,                  // Some fields add field_ prefix
+                            'acf_' + valueSubField.name,                    // Some fields add acf_ prefix
+                            '_' + valueSubField.name                        // Some fields add _ prefix
                         ];
                         
                         // For nested field names, try the last segment
@@ -788,25 +792,93 @@ WPFE.acf = (function($) {
                             }
                         }
                         
-                        // Try each possible key
+                        // For field names with dashes or underscores, try both with and without
+                        if (valueSubField.name.includes('-')) {
+                            possibleKeys.push(valueSubField.name.replace(/-/g, '_'));
+                        }
+                        if (valueSubField.name.includes('_')) {
+                            possibleKeys.push(valueSubField.name.replace(/_/g, '-'));
+                        }
+                        
+                        // For fields inside repeaters, also try with row index patterns
+                        possibleKeys.push(
+                            valueSubField.name + '_' + j,                 // name_0 pattern
+                            valueSubField.name + ':' + j,                 // name:0 pattern
+                            j + '_' + valueSubField.name,                 // 0_name pattern
+                            valueSubField.name.replace(/\[\d+\]/, '[' + j + ']'), // Replace row index
+                            'row_' + j + '_' + valueSubField.name        // row_0_name pattern
+                        );
+                        
+                        // Remove any duplicate or empty keys
+                        possibleKeys = possibleKeys.filter(function(key, index, self) {
+                            return key && self.indexOf(key) === index;
+                        });
+                        
+                        // Try different paths to find the value
                         var valueFound = false;
-                        for (var ki = 0; ki < possibleKeys.length; ki++) {
-                            var testKey = possibleKeys[ki];
-                            if (testKey && rowValues[testKey] !== undefined) {
-                                valueSubField.value = rowValues[testKey];
-                                valueFound = true;
-                                break;
+                        var checkPaths = [
+                            rowValues,                      // Direct value
+                            rowValues.value,                // Nested in value property
+                            rowValues.fields,               // Nested in fields property
+                            rowValues.data,                 // Nested in data property
+                            valueSubField.key && rowValues[valueSubField.key.replace('field_', '')], // Without field_ prefix
+                            rowValues.acf                   // Nested in acf property
+                        ];
+                        
+                        // Loop through all possible paths
+                        for (var pi = 0; pi < checkPaths.length; pi++) {
+                            var path = checkPaths[pi];
+                            if (!path || typeof path !== 'object') continue;
+                            
+                            // Try all possible keys in each path
+                            for (var ki = 0; ki < possibleKeys.length; ki++) {
+                                var testKey = possibleKeys[ki];
+                                if (testKey && path[testKey] !== undefined) {
+                                    valueSubField.value = path[testKey];
+                                    valueFound = true;
+                                    
+                                    if (wpfe_data.debug_mode) {
+                                        console.debug('Found value for field', valueSubField.name, 'with key', testKey, 'in path', pi);
+                                    }
+                                    break;
+                                }
+                            }
+                            
+                            if (valueFound) break;
+                        }
+                        
+                        // Special handling for gallery fields which might be nested
+                        if (!valueFound && valueSubField.type === 'gallery') {
+                            // Check if there's a gallery array stored at the row level
+                            var galleryKeys = ['gallery', 'images', 'photos', valueSubField.name + '_gallery'];
+                            for (var gi = 0; gi < galleryKeys.length; gi++) {
+                                if (rowValues[galleryKeys[gi]] && Array.isArray(rowValues[galleryKeys[gi]])) {
+                                    valueSubField.value = rowValues[galleryKeys[gi]];
+                                    valueFound = true;
+                                    break;
+                                }
                             }
                         }
                         
-                        // If still not found, check if value exists in a nested 'value' property
-                        if (!valueFound && rowValues.value && 
-                            typeof rowValues.value === 'object') {
-                            // Try the same keys but in the value object
-                            for (var kj = 0; kj < possibleKeys.length; kj++) {
-                                var testValueKey = possibleKeys[kj];
-                                if (testValueKey && rowValues.value[testValueKey] !== undefined) {
-                                    valueSubField.value = rowValues.value[testValueKey];
+                        // Special handling for file/image fields
+                        if (!valueFound && (valueSubField.type === 'image' || valueSubField.type === 'file')) {
+                            // Check for special formats for file/image fields
+                            for (var ki = 0; ki < possibleKeys.length; ki++) {
+                                var fileKey = possibleKeys[ki];
+                                
+                                // Try with ID suffix
+                                if (rowValues[fileKey + '_id'] !== undefined) {
+                                    valueSubField.value = rowValues[fileKey + '_id'];
+                                    valueFound = true;
+                                    break;
+                                }
+                                
+                                // Try with URL suffix
+                                if (rowValues[fileKey + '_url'] !== undefined) {
+                                    valueSubField.value = {
+                                        'url': rowValues[fileKey + '_url'],
+                                        'id': rowValues[fileKey + '_id'] || 0
+                                    };
                                     valueFound = true;
                                     break;
                                 }
@@ -817,7 +889,7 @@ WPFE.acf = (function($) {
                         if (!valueFound) {
                             valueSubField.value = '';
                             if (wpfe_data.debug_mode) {
-                                console.debug('No value found for field', valueSubField.key, 'in repeater row', j);
+                                console.debug('No value found for field', valueSubField.key, 'in repeater row', j, 'tried keys:', possibleKeys);
                             }
                         }
                     } else {
@@ -951,14 +1023,18 @@ WPFE.acf = (function($) {
                                 valueSubField.parent_layout = layoutType;
                                 valueSubField.layout_index = j;
                                 
-                                // Try all possible key formats ACF might use
+                                // Enhanced key matching for better field detection
                                 var possibleKeys = [
                                     valueSubField.key,                              // Direct field key (field_xxx)
                                     valueSubField.name,                             // Full field name path
                                     valueSubField.key.replace('field_', ''),        // ACF sometimes strips field_ prefix
                                     valueSubField.name.split('[').pop().split(']')[0], // Last segment of name
                                     valueSubField.name.split('_').pop(),            // Last part after underscore
-                                    valueSubField.name.replace(/[\[\]']+/g, '')     // Name with brackets removed
+                                    valueSubField.name.replace(/[\[\]']+/g, ''),    // Name with brackets removed
+                                    valueSubField.name.split(/[\[\]]+/).pop(),      // Last segment after bracket notation
+                                    'field_' + valueSubField.name,                  // Some fields add field_ prefix
+                                    'acf_' + valueSubField.name,                    // Some fields add acf_ prefix
+                                    '_' + valueSubField.name                        // Some fields add _ prefix
                                 ];
                                 
                                 // For nested field names, try the last segment
@@ -969,25 +1045,95 @@ WPFE.acf = (function($) {
                                     }
                                 }
                                 
-                                // Try each possible key
+                                // For field names with dashes or underscores, try both with and without
+                                if (valueSubField.name.includes('-')) {
+                                    possibleKeys.push(valueSubField.name.replace(/-/g, '_'));
+                                }
+                                if (valueSubField.name.includes('_')) {
+                                    possibleKeys.push(valueSubField.name.replace(/_/g, '-'));
+                                }
+                                
+                                // For fields inside flexible content, also try with layout specific patterns
+                                possibleKeys.push(
+                                    layoutType + '_' + valueSubField.name,         // layout_fieldname pattern
+                                    layoutType + ':' + valueSubField.name,         // layout:fieldname pattern
+                                    j + '_' + valueSubField.name,                  // index_fieldname pattern
+                                    valueSubField.name + '_' + j,                  // fieldname_index pattern
+                                    valueSubField.name + '_' + layoutType,         // fieldname_layout pattern
+                                    'layout_' + layoutType + '_' + valueSubField.name // layout_layouttype_fieldname
+                                );
+                                
+                                // Remove any duplicate or empty keys
+                                possibleKeys = possibleKeys.filter(function(key, index, self) {
+                                    return key && self.indexOf(key) === index;
+                                });
+                                
+                                // Try different paths to find the value
                                 var valueFound = false;
-                                for (var ki = 0; ki < possibleKeys.length; ki++) {
-                                    var testKey = possibleKeys[ki];
-                                    if (testKey && layoutValues[testKey] !== undefined) {
-                                        valueSubField.value = layoutValues[testKey];
-                                        valueFound = true;
-                                        break;
+                                var checkPaths = [
+                                    layoutValues,                      // Direct value
+                                    layoutValues.value,                // Nested in value property
+                                    layoutValues.fields,               // Nested in fields property
+                                    layoutValues.data,                 // Nested in data property
+                                    layoutValues[layoutType],          // Nested in layout type property
+                                    valueSubField.key && layoutValues[valueSubField.key.replace('field_', '')], // Without field_ prefix
+                                    layoutValues.acf                   // Nested in acf property
+                                ];
+                                
+                                // Loop through all possible paths
+                                for (var pi = 0; pi < checkPaths.length; pi++) {
+                                    var path = checkPaths[pi];
+                                    if (!path || typeof path !== 'object') continue;
+                                    
+                                    // Try all possible keys in each path
+                                    for (var ki = 0; ki < possibleKeys.length; ki++) {
+                                        var testKey = possibleKeys[ki];
+                                        if (testKey && path[testKey] !== undefined) {
+                                            valueSubField.value = path[testKey];
+                                            valueFound = true;
+                                            
+                                            if (wpfe_data.debug_mode) {
+                                                console.debug('Found value for field', valueSubField.name, 'with key', testKey, 'in path', pi);
+                                            }
+                                            break;
+                                        }
+                                    }
+                                    
+                                    if (valueFound) break;
+                                }
+                                
+                                // Special handling for gallery fields which might be nested
+                                if (!valueFound && valueSubField.type === 'gallery') {
+                                    // Check if there's a gallery array stored in the layout
+                                    var galleryKeys = ['gallery', 'images', 'photos', valueSubField.name + '_gallery', layoutType + '_gallery'];
+                                    for (var gi = 0; gi < galleryKeys.length; gi++) {
+                                        if (layoutValues[galleryKeys[gi]] && Array.isArray(layoutValues[galleryKeys[gi]])) {
+                                            valueSubField.value = layoutValues[galleryKeys[gi]];
+                                            valueFound = true;
+                                            break;
+                                        }
                                     }
                                 }
                                 
-                                // If still not found, check if value exists in a nested 'value' property
-                                if (!valueFound && layoutValues.value && 
-                                    typeof layoutValues.value === 'object') {
-                                    // Try the same keys but in the value object
-                                    for (var kj = 0; kj < possibleKeys.length; kj++) {
-                                        var testValueKey = possibleKeys[kj];
-                                        if (testValueKey && layoutValues.value[testValueKey] !== undefined) {
-                                            valueSubField.value = layoutValues.value[testValueKey];
+                                // Special handling for file/image fields
+                                if (!valueFound && (valueSubField.type === 'image' || valueSubField.type === 'file')) {
+                                    // Check for special formats for file/image fields
+                                    for (var ki = 0; ki < possibleKeys.length; ki++) {
+                                        var fileKey = possibleKeys[ki];
+                                        
+                                        // Try with ID suffix
+                                        if (layoutValues[fileKey + '_id'] !== undefined) {
+                                            valueSubField.value = layoutValues[fileKey + '_id'];
+                                            valueFound = true;
+                                            break;
+                                        }
+                                        
+                                        // Try with URL suffix
+                                        if (layoutValues[fileKey + '_url'] !== undefined) {
+                                            valueSubField.value = {
+                                                'url': layoutValues[fileKey + '_url'],
+                                                'id': layoutValues[fileKey + '_id'] || 0
+                                            };
                                             valueFound = true;
                                             break;
                                         }
@@ -998,7 +1144,7 @@ WPFE.acf = (function($) {
                                 if (!valueFound) {
                                     valueSubField.value = '';
                                     if (wpfe_data.debug_mode) {
-                                        console.debug('No value found for field', valueSubField.key, 'in layout', layoutType);
+                                        console.debug('No value found for field', valueSubField.key, 'in layout', layoutType, 'tried keys:', possibleKeys);
                                     }
                                 }
                             } else {
@@ -1068,29 +1214,118 @@ WPFE.acf = (function($) {
                 
                 // Get value from group values with robust fallbacks
                 if (fieldData.value && typeof fieldData.value === 'object') {
-                    // Try all possible key formats ACF might use
+                    // Enhanced key matching for better field detection
                     var possibleKeys = [
                         subField.key,                              // Direct field key (field_xxx)
                         subField.name,                             // Full field name path
                         subField.key.replace('field_', ''),        // ACF sometimes strips field_ prefix
                         subField.name.split('[').pop().split(']')[0], // Last segment of name
                         subField.name.split('_').pop(),            // Last part after underscore
-                        subField.name.replace(/[\[\]']+/g, '')     // Name with brackets removed
+                        subField.name.replace(/[\[\]']+/g, ''),    // Name with brackets removed
+                        subField.name.split(/[\[\]]+/).pop(),      // Last segment after bracket notation
+                        'field_' + subField.name,                  // Some fields add field_ prefix
+                        'acf_' + subField.name,                    // Some fields add acf_ prefix
+                        '_' + subField.name                        // Some fields add _ prefix
                     ];
                     
-                    // Try each possible key
+                    // For nested field names, try the last segment
+                    if (subField.name.includes('[')) {
+                        var lastSegmentMatch = subField.name.match(/\[([^\]]+)\]$/);
+                        if (lastSegmentMatch && lastSegmentMatch[1]) {
+                            possibleKeys.push(lastSegmentMatch[1]);
+                        }
+                    }
+                    
+                    // For group fields, try specific group formats
+                    if (fieldData.name && subField.name) {
+                        possibleKeys.push(
+                            fieldData.name + '_' + subField.name,     // group_field pattern
+                            fieldData.name + ':' + subField.name,     // group:field pattern
+                            subField.name.replace(fieldData.name + '_', ''), // Remove group prefix if present
+                            subField.name.split(fieldData.name + '_').pop() // Get part after group prefix
+                        );
+                    }
+                    
+                    // Remove any duplicate or empty keys
+                    possibleKeys = possibleKeys.filter(function(key, index, self) {
+                        return key && self.indexOf(key) === index;
+                    });
+                    
+                    // Try different paths to find the value
                     var valueFound = false;
-                    for (var ki = 0; ki < possibleKeys.length; ki++) {
-                        var testKey = possibleKeys[ki];
-                        if (testKey && fieldData.value[testKey] !== undefined) {
-                            subField.value = fieldData.value[testKey];
-                            valueFound = true;
-                            break;
+                    var checkPaths = [
+                        fieldData.value,                      // Direct value
+                        fieldData.value && fieldData.value.value,  // Nested in value property
+                        fieldData.value && fieldData.value.fields, // Nested in fields property
+                        fieldData.value && fieldData.value.data,   // Nested in data property
+                        fieldData.data,                       // Group data property
+                        fieldData.fields                      // Group fields property
+                    ];
+                    
+                    // Loop through all possible paths
+                    for (var pi = 0; pi < checkPaths.length; pi++) {
+                        var path = checkPaths[pi];
+                        if (!path || typeof path !== 'object') continue;
+                        
+                        // Try all possible keys in each path
+                        for (var ki = 0; ki < possibleKeys.length; ki++) {
+                            var testKey = possibleKeys[ki];
+                            if (testKey && path[testKey] !== undefined) {
+                                subField.value = path[testKey];
+                                valueFound = true;
+                                
+                                if (wpfe_data.debug_mode) {
+                                    console.debug('Found value for group field', subField.name, 'with key', testKey, 'in path', pi);
+                                }
+                                break;
+                            }
+                        }
+                        
+                        if (valueFound) break;
+                    }
+                    
+                    // Special handling for gallery fields 
+                    if (!valueFound && subField.type === 'gallery') {
+                        // Check if there's a gallery array stored in the group
+                        var galleryKeys = ['gallery', 'images', 'photos', subField.name + '_gallery'];
+                        for (var gi = 0; gi < galleryKeys.length; gi++) {
+                            if (fieldData.value[galleryKeys[gi]] && Array.isArray(fieldData.value[galleryKeys[gi]])) {
+                                subField.value = fieldData.value[galleryKeys[gi]];
+                                valueFound = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Special handling for file/image fields
+                    if (!valueFound && (subField.type === 'image' || subField.type === 'file')) {
+                        for (var ki = 0; ki < possibleKeys.length; ki++) {
+                            var fileKey = possibleKeys[ki];
+                            
+                            // Try with ID suffix
+                            if (fieldData.value[fileKey + '_id'] !== undefined) {
+                                subField.value = fieldData.value[fileKey + '_id'];
+                                valueFound = true;
+                                break;
+                            }
+                            
+                            // Try with URL suffix
+                            if (fieldData.value[fileKey + '_url'] !== undefined) {
+                                subField.value = {
+                                    'url': fieldData.value[fileKey + '_url'],
+                                    'id': fieldData.value[fileKey + '_id'] || 0
+                                };
+                                valueFound = true;
+                                break;
+                            }
                         }
                     }
                     
                     if (!valueFound) {
                         subField.value = '';
+                        if (wpfe_data.debug_mode) {
+                            console.debug('No value found for group field', subField.name, 'tried keys:', possibleKeys);
+                        }
                     }
                 } else {
                     subField.value = '';
